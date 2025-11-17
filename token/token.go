@@ -9,36 +9,26 @@ type Token struct {
 type TokenType string
 
 const (
-	Invalid         = "INVALID"
-	EOF             = "EOF"
-	OpenParen       = "OPENPAREN"
-	CloseParen      = "CLOSEPAREN"
-	OpenBrace       = "OPENBRACE"
-	CloseBrace      = "CLOSEBRACE"
-	Plus            = "PLUS"
-	Minus           = "MINUS"
-	Multiply        = "MULTIPLY"
-	Divide          = "DIVIDE"
-	Backslash       = "BACKSLASH"
-	NewInstruction  = "NEWINSTRUCTION"
-	SingleQuote     = "SINGLEQUOTE"
-	DoubleQuote     = "DOUBLEQUOTE"
-	Equal           = "EQUAL"
-	Not             = "NOT"
-	Comma           = "COMMA"
-	LessThan        = "LESSTHAN"
-	LessThanOrEqual = "LESSTHANOREQUAL"
-	MoreThan        = "MORETHAN"
-	MoreThanOrEqual = "MORETHANOREQUAL"
-	Int             = "INT"
-	String          = "STRING"
-	Identifier      = "IDENTIFIER"
-	Keyword         = "KEYWORD"
-	DoubleEqual     = "DOUBLEEQUAL"
-	NotEqual        = "NOTEQUAL"
-	Float           = "FLOAT"
-	OpenBracket     = "OPENBRACKET"
-	CloseBracket    = "CLOSEBRACKET"
+	Invalid        = "INVALID"
+	EOF            = "EOF"
+	OpenParen      = "OPENPAREN"
+	CloseParen     = "CLOSEPAREN"
+	OpenBrace      = "OPENBRACE"
+	CloseBrace     = "CLOSEBRACE"
+	Operator       = "OPERATOR"
+	Backslash      = "BACKSLASH"
+	NewInstruction = "NEWINSTRUCTION"
+	SingleQuote    = "SINGLEQUOTE"
+	DoubleQuote    = "DOUBLEQUOTE"
+	Equal          = "EQUAL"
+	Comma          = "COMMA"
+	Int            = "INT"
+	String         = "STRING"
+	Identifier     = "IDENTIFIER"
+	Keyword        = "KEYWORD"
+	Float          = "FLOAT"
+	OpenBracket    = "OPENBRACKET"
+	CloseBracket   = "CLOSEBRACKET"
 )
 
 var SymbolMap = map[rune]TokenType{
@@ -46,18 +36,19 @@ var SymbolMap = map[rune]TokenType{
 	')':  CloseParen,
 	'{':  OpenBrace,
 	'}':  CloseBrace,
-	'+':  Plus,
-	'-':  Minus,
-	'*':  Multiply,
-	'/':  Divide,
+	'+':  Operator,
+	'-':  Operator,
+	'*':  Operator,
+	'/':  Operator,
 	'\\': Backslash,
 	'=':  Equal,
-	'!':  Not,
+	'!':  Operator,
 	',':  Comma,
-	'<':  LessThan,
-	'>':  MoreThan,
+	'<':  Operator,
+	'>':  Operator,
 	';':  NewInstruction,
 	'[':  OpenBracket,
 	']':  CloseBracket,
+	'^':  Operator,
 }
 var KeyWords = []string{"if", "else", "for", "func", "return", "string", "int", "float", "bool", "void"}

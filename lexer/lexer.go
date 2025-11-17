@@ -63,19 +63,19 @@ func (lexer *Lexer) Lex() {
 			}
 			break
 		case lexer.CurChar == '<' && lexer.CharAfter == '=':
-			lexer.NewToken(token.LessThanOrEqual, "<=")
+			lexer.NewToken(token.Operator, "<=")
 			lexer.NextChar()
 			break
 		case lexer.CurChar == '>' && lexer.CharAfter == '=':
-			lexer.NewToken(token.MoreThanOrEqual, ">=")
+			lexer.NewToken(token.Operator, ">=")
 			lexer.NextChar()
 			break
 		case lexer.CurChar == '!' && lexer.CharAfter == '=':
-			lexer.NewToken(token.NotEqual, "!=")
+			lexer.NewToken(token.Operator, "!=")
 			lexer.NextChar()
 			break
 		case lexer.CurChar == '=' && lexer.CharAfter == '=':
-			lexer.NewToken(token.DoubleEqual, "==")
+			lexer.NewToken(token.Operator, "==")
 			lexer.NextChar()
 			break
 		case lexer.CurChar == '"':
@@ -90,9 +90,19 @@ func (lexer *Lexer) Lex() {
 			break
 		case lexer.CurChar == ' ' || lexer.CurChar == '\t':
 			break
+		case lexer.CurChar == '/' && lexer.CharAfter == '/':
+			for lexer.CharAfter != '\n' {
+				lexer.NextChar()
+			}
+			break
+		case lexer.CurChar == '/' && lexer.CharAfter == '*':
+			for lexer.CurChar == '*' && lexer.CharAfter == '/' {
+				lexer.NextChar()
+			}
+			break
 		default:
 			if oneCharToken, ok := token.SymbolMap[lexer.CurChar]; ok {
-				lexer.NewToken(oneCharToken, lexer.CurChar)
+				lexer.NewToken(oneCharToken, string(lexer.CurChar))
 				break
 			}
 			lexer.NewToken(token.Invalid, lexer.CurChar)
