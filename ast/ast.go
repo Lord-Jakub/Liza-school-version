@@ -39,11 +39,11 @@ type FunctionCall struct {
 
 func (*FunctionCall) expr() {}
 
-type IdentifierExpression struct {
+type VariableExpression struct {
 	Value token.Token
 }
 
-func (*IdentifierExpression) expr() {}
+func (*VariableExpression) expr() {}
 
 type LiteralExpression struct {
 	Value token.Token
@@ -83,7 +83,7 @@ func (*ReturnStatement) stmt() {}
 type FunctionDeclarationStatement struct {
 	Name token.Token
 	Type token.Token
-	Args any // idk, i will solve this later
+	Args []VariableDeclarationStatement
 	Body BodyStatement
 }
 
@@ -98,7 +98,7 @@ type VariableDeclarationStatement struct {
 func (*VariableDeclarationStatement) stmt() {}
 
 type VariableAssignmentStatement struct {
-	Target IdentifierExpression
+	Target token.Token
 	Value  Expression
 }
 

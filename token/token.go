@@ -51,4 +51,8 @@ var SymbolMap = map[rune]TokenType{
 	']':  CloseBracket,
 	'^':  Operator,
 }
-var KeyWords = []string{"if", "else", "for", "func", "return", "string", "int", "float", "bool", "void"}
+
+var (
+	KeyWords = []string{"if", "else", "for", "func", "return", "string", "int", "float", "bool", "void", "namespace"}
+	Types    = []string{"string", "int", "float", "bool", "void"}
+)
