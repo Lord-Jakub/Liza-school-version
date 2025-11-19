@@ -62,6 +62,9 @@ func (parser *Parser) ParseExpression(precLimit int) ast.Expression {
 		if isRightAssociative[op.Value.(string)] {
 			newLimit--
 		}
+		if op.Type == token.OpenBracket {
+			newLimit = 0
+		}
 		right := parser.ParseExpression(newLimit)
 		left = &ast.BinaryExpression{left, op, right}
 	}
@@ -300,7 +303,7 @@ func (parser *Parser) ParseIfStatement() ast.IfStatement {
 		parser.Advance()
 		if parser.NextTok.Type == token.Keyword && parser.NextTok.Value == "if" {
 			parser.Advance()
-			ifStatement.Alternative = parser.ParseBody()
+			ifStatement.Alternative.Nodes = append(ifStatement.Alternative.Nodes, parser.ParseIfStatement())
 		} else {
 			for parser.CurTok.Type != token.OpenBrace {
 				parser.Advance()

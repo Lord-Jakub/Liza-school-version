@@ -10,7 +10,11 @@ import (
 func main() {
 	code := `namespace test
 	for int i; i<10; i = i+1{
-	return array[i]
+	if i==9{
+	return array[arr[i]]
+	} else if i<9{
+	return i
+	}
 	}
 	`
 	// code := "!(5*3==15 && 5!=3)"
