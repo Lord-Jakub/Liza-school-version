@@ -41,8 +41,8 @@ func (parser *Parser) Advance() {
 }
 
 var (
-	precedence         = map[string]int{"&&": 1, "||": 1, "==": 2, "!=": 2, "<=": 2, ">=": 2, "<": 2, ">": 2, "+": 3, "-": 3, "*": 4, "/": 4, "^": 5}
-	isRightAssociative = map[string]bool{"&&": false, "||": false, "==": false, "!=": false, "<=": false, ">=": false, "<": false, ">": false, "+": false, "-": false, "*": false, "/": false, "^": true}
+	precedence         = map[string]int{"[": 1, "&&": 2, "||": 2, "==": 3, "!=": 3, "<=": 3, ">=": 3, "<": 3, ">": 3, "+": 4, "-": 4, "*": 5, "/": 5, "^": 6}
+	isRightAssociative = map[string]bool{"[": false, "&&": false, "||": false, "==": false, "!=": false, "<=": false, ">=": false, "<": false, ">": false, "+": false, "-": false, "*": false, "/": false, "^": true}
 )
 
 func (parser *Parser) ParseExpression(precLimit int) ast.Expression {
@@ -50,7 +50,7 @@ func (parser *Parser) ParseExpression(precLimit int) ast.Expression {
 
 	for {
 		op := parser.NextTok
-		if op.Type != token.Operator {
+		if op.Type != token.Operator && op.Type != token.OpenBracket {
 			break
 		}
 		if precedence[op.Value.(string)] <= precLimit {
@@ -64,6 +64,9 @@ func (parser *Parser) ParseExpression(precLimit int) ast.Expression {
 		}
 		right := parser.ParseExpression(newLimit)
 		left = &ast.BinaryExpression{left, op, right}
+	}
+	if parser.NextTok.Type == token.CloseBracket {
+		parser.Advance()
 	}
 
 	return left
@@ -83,7 +86,7 @@ func (parser *Parser) ParseExpressionLeft() ast.Expression {
 		case token.OpenParen:
 			functionCall := parser.ParseFunctionCall()
 			return &functionCall
-		case token.OpenBracket:
+		// case token.OpenBracket:
 		default:
 			return &ast.VariableExpression{parser.CurTok}
 		}
