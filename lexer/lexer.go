@@ -10,21 +10,21 @@ import (
 )
 
 type Lexer struct {
-	Code      []rune
-	Pos       int
-	Line      int
-	CurChar   rune
-	CharAfter rune
-	Tokens    []token.Token
-	File      string
-	Errors    []error
+	Code     []rune
+	Pos      int
+	Line     int
+	CurChar  rune
+	NextChar rune
+	Tokens   []token.Token
+	File     string
+	Errors   []error
 }
 
-func (lexer *Lexer) NextChar() {
+func (lexer *Lexer) Advance() {
 	lexer.Pos++
-	lexer.CurChar = lexer.CharAfter
+	lexer.CurChar = lexer.NextChar
 	if lexer.Pos+1 < len(lexer.Code) {
-		lexer.CharAfter = lexer.Code[lexer.Pos+1]
+		lexer.NextChar = lexer.Code[lexer.Pos+1]
 	}
 }
 
@@ -41,7 +41,7 @@ func New(code string, file string) *Lexer {
 	}
 	if len(code) > 2 {
 		lexer.CurChar = []rune(code)[0]
-		lexer.CharAfter = []rune(code)[1]
+		lexer.NextChar = []rune(code)[1]
 	}
 
 	return lexer
@@ -62,22 +62,31 @@ func (lexer *Lexer) Lex() {
 				lexer.Errors = append(lexer.Errors, err)
 			}
 			break
-		case lexer.CurChar == '<' && lexer.CharAfter == '=':
+		case lexer.CurChar == '<' && lexer.NextChar == '=':
 			lexer.NewToken(token.Operator, "<=")
-			lexer.NextChar()
+			lexer.Advance()
 			break
-		case lexer.CurChar == '>' && lexer.CharAfter == '=':
+		case lexer.CurChar == '>' && lexer.NextChar == '=':
 			lexer.NewToken(token.Operator, ">=")
-			lexer.NextChar()
+			lexer.Advance()
 			break
-		case lexer.CurChar == '!' && lexer.CharAfter == '=':
+		case lexer.CurChar == '!' && lexer.NextChar == '=':
 			lexer.NewToken(token.Operator, "!=")
-			lexer.NextChar()
+			lexer.Advance()
 			break
-		case lexer.CurChar == '=' && lexer.CharAfter == '=':
+		case lexer.CurChar == '=' && lexer.NextChar == '=':
 			lexer.NewToken(token.Operator, "==")
-			lexer.NextChar()
+			lexer.Advance()
 			break
+		case lexer.CurChar == '&' && lexer.NextChar == '&':
+			lexer.NewToken(token.Operator, "&&")
+			lexer.Advance()
+			break
+		case lexer.CurChar == '|' && lexer.NextChar == '|':
+			lexer.NewToken(token.Operator, "||")
+			lexer.Advance()
+			break
+
 		case lexer.CurChar == '"':
 			err := lexer.handleString()
 			if err != nil {
@@ -90,14 +99,14 @@ func (lexer *Lexer) Lex() {
 			break
 		case lexer.CurChar == ' ' || lexer.CurChar == '\t':
 			break
-		case lexer.CurChar == '/' && lexer.CharAfter == '/':
-			for lexer.CharAfter != '\n' {
-				lexer.NextChar()
+		case lexer.CurChar == '/' && lexer.NextChar == '/':
+			for lexer.NextChar != '\n' {
+				lexer.Advance()
 			}
 			break
-		case lexer.CurChar == '/' && lexer.CharAfter == '*':
-			for lexer.CurChar == '*' && lexer.CharAfter == '/' {
-				lexer.NextChar()
+		case lexer.CurChar == '/' && lexer.NextChar == '*':
+			for lexer.CurChar == '*' && lexer.NextChar == '/' {
+				lexer.Advance()
 			}
 			break
 		default:
@@ -112,7 +121,7 @@ func (lexer *Lexer) Lex() {
 		if lexer.Tokens[len(lexer.Tokens)-1].Type == token.EOF {
 			break
 		}
-		lexer.NextChar()
+		lexer.Advance()
 
 	}
 }
@@ -131,8 +140,8 @@ func (lexer *Lexer) handleIdOrKeyword() {
 	str := ""
 	for utils.IsLetter(lexer.CurChar) {
 		str = string(append([]rune(str), lexer.CurChar))
-		if utils.IsLetter(lexer.CharAfter) {
-			lexer.NextChar()
+		if utils.IsLetter(lexer.NextChar) {
+			lexer.Advance()
 		} else {
 			break
 		}
@@ -152,8 +161,8 @@ func (lexer *Lexer) handleNumber() error {
 		if lexer.CurChar == '.' {
 			hasDot = true
 		}
-		if utils.IsDigit(lexer.CharAfter) || lexer.CharAfter == '.' {
-			lexer.NextChar()
+		if utils.IsDigit(lexer.NextChar) || lexer.NextChar == '.' {
+			lexer.Advance()
 		} else {
 			break
 		}
@@ -176,12 +185,12 @@ func (lexer *Lexer) handleNumber() error {
 }
 
 func (lexer *Lexer) handleString() error {
-	lexer.NextChar()
+	lexer.Advance()
 	str := ""
 	originalLine := lexer.Line
 	for lexer.CurChar != '"' {
 		if lexer.CurChar == '\\' {
-			lexer.NextChar()
+			lexer.Advance()
 			str = string(append([]rune(str), utils.EscapeSeq[lexer.CurChar]))
 		} else {
 			str = string(append([]rune(str), lexer.CurChar))
@@ -192,7 +201,7 @@ func (lexer *Lexer) handleString() error {
 		if lexer.CurChar == '\n' {
 			lexer.Line++
 		}
-		lexer.NextChar()
+		lexer.Advance()
 	}
 	lexer.NewToken(token.String, str)
 	return nil

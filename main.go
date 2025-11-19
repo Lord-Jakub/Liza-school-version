@@ -9,18 +9,16 @@ import (
 
 func main() {
 	code := `namespace test
-	func foo(int x, int y) int{
-	x = y
-	}
-	func main(){
-	int i
-	i = 1*5+(3-2)/5^2^2
-	foo(i, 5*6)
+	for int i; i<10; i = i+1{
+	for 1{}
+	return i
 	}
 	`
+	// code := "!(5*3==15 && 5!=3)"
 	code = string(append([]byte(code), 0))
 	lex := lexer.New(code, "nil")
 	lex.Lex()
+	// tests.TestLexer(lex)
 	par := parser.New(lex.Tokens)
 	// tests.TestParseExpression(par)
 	tests.TestParser(par)
