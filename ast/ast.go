@@ -31,6 +31,9 @@ type BinaryExpression struct {
 
 func (*BinaryExpression) expr() {}
 func (be *BinaryExpression) String() string {
+	if be.Op.Value == "[" {
+		return fmt.Sprintf("(%s %s %s])", be.Left.String(), be.Op.Value.(string), be.Right.String())
+	}
 	return fmt.Sprintf("(%s %s %s)", be.Left.String(), be.Op.Value.(string), be.Right.String())
 }
 
@@ -88,6 +91,22 @@ func (le *LiteralExpression) String() string {
 	}
 	return id
 }
+
+type ArrayExpression struct {
+	Elements []Expression
+}
+
+func (ae *ArrayExpression) String() string {
+	var elements string
+	for i, element := range ae.Elements {
+		if i != 0 {
+			elements += ", "
+		}
+		elements += element.String()
+	}
+	return fmt.Sprintf("[%s]", elements)
+}
+func (*ArrayExpression) expr() {}
 
 type InvalidExpression struct{}
 

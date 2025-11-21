@@ -8,21 +8,13 @@ import (
 )
 
 func main() {
-	code := `namespace test
-	for int i; i<10; i = i+1{
-	if i==9{
-	return array[arr[i]]
-	} else if i<9{
-	return i
-	}
-	}
-	`
+	code := `[[1,2],[3,4],[5,arr[6]]]`
 	// code := "!(5*3==15 && 5!=3)"
 	code = string(append([]byte(code), 0))
 	lex := lexer.New(code, "nil")
 	lex.Lex()
 	// tests.TestLexer(lex)
 	par := parser.New(lex.Tokens)
-	// tests.TestParseExpression(par)
-	tests.TestParser(par)
+	tests.TestParseExpression(par)
+	// tests.TestParser(par)
 }

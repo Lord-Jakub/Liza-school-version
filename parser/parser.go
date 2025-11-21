@@ -50,6 +50,7 @@ func (parser *Parser) ParseExpression(precLimit int) ast.Expression {
 
 	for {
 		op := parser.NextTok
+
 		if op.Type != token.Operator && op.Type != token.OpenBracket {
 			break
 		}
@@ -66,10 +67,10 @@ func (parser *Parser) ParseExpression(precLimit int) ast.Expression {
 			newLimit = 0
 		}
 		right := parser.ParseExpression(newLimit)
+		if parser.NextTok.Type == token.CloseBracket {
+			parser.Advance()
+		}
 		left = &ast.BinaryExpression{left, op, right}
-	}
-	if parser.NextTok.Type == token.CloseBracket {
-		parser.Advance()
 	}
 
 	return left
@@ -101,6 +102,20 @@ func (parser *Parser) ParseExpressionLeft() ast.Expression {
 		expr := parser.ParseExpression(0)
 		parser.Advance()
 		return expr
+	case token.OpenBracket:
+		parser.Advance()
+		var arr ast.ArrayExpression
+		if parser.CurTok.Type != token.CloseBracket {
+			arr.Elements = append(arr.Elements, parser.ParseExpression(0))
+			parser.Advance()
+		}
+		for parser.CurTok.Type == token.Comma {
+			parser.Advance()
+			arr.Elements = append(arr.Elements, parser.ParseExpression(0))
+
+			parser.Advance()
+		}
+		return &arr
 	}
 	return &ast.InvalidExpression{}
 }
