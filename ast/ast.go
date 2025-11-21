@@ -140,7 +140,7 @@ func (*ReturnStatement) stmt() {}
 
 type FunctionDeclarationStatement struct {
 	Name token.Token
-	Type token.Token
+	Type Type
 	Args []VariableDeclarationStatement
 	Body BodyStatement
 }
@@ -149,7 +149,7 @@ func (*FunctionDeclarationStatement) stmt() {}
 
 type VariableDeclarationStatement struct {
 	Identifier token.Token
-	Type       token.Token
+	Type       Type
 	Value      Expression
 }
 
@@ -170,3 +170,34 @@ type ForStatement struct {
 }
 
 func (*ForStatement) stmt() {}
+
+type Type interface {
+	t()
+}
+
+type Int token.Token
+
+func (*Int) t() {}
+
+type Float token.Token
+
+func (*Float) t() {}
+
+type String token.Token
+
+func (*String) t() {}
+
+type Bool token.Token
+
+func (*Bool) t() {}
+
+type Array struct {
+	Type Type
+	Size Expression
+}
+
+func (*Array) t() {}
+
+type Void token.Token
+
+func (*Void) t() {}

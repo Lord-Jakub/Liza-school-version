@@ -107,7 +107,7 @@ func (parser *Parser) ParseExpressionLeft() ast.Expression {
 		var arr ast.ArrayExpression
 		if parser.CurTok.Type != token.CloseBracket {
 			arr.Elements = append(arr.Elements, parser.ParseExpression(0))
-			parser.Advance() // TODO: error handling if token to consume isn't comma
+			parser.Advance()
 		}
 		for parser.CurTok.Type == token.Comma {
 			parser.Advance()
@@ -212,7 +212,7 @@ func (parser *Parser) ParseBody() ast.BodyStatement {
 
 func (parser *Parser) ParseVariableDeclaration() ast.VariableDeclarationStatement {
 	var variable ast.VariableDeclarationStatement
-	variable.Type = parser.CurTok
+	variable.Type = parser.ParseType()
 	if parser.NextTok.Type == token.Identifier {
 		parser.Advance()
 		variable.Identifier = parser.CurTok
@@ -284,12 +284,12 @@ func (parser *Parser) ParseFunctionDeclaration() ast.FunctionDeclarationStatemen
 	}
 	parser.Advance()
 	if parser.CurTok.Type == token.Keyword && slices.Contains(token.Types, parser.CurTok.Value.(string)) {
-		function.Type = parser.CurTok
+		function.Type = parser.ParseType()
 		parser.Advance()
 	}
 	if parser.CurTok.Type == token.OpenBrace {
-		if function.Type.Type == "" {
-			function.Type = token.Token{Type: token.Keyword, Value: "void"}
+		if function.Type == nil {
+			function.Type = &ast.Void{}
 		}
 		function.Body = parser.ParseBody()
 	} else {
@@ -379,4 +379,48 @@ func (parser *Parser) ParseForStatement() ast.ForStatement {
 	}
 	forStmt.Body = parser.ParseBody()
 	return forStmt
+}
+
+func (parser *Parser) ParseType() ast.Type {
+	t := parser.ParseSimpleType()
+	for parser.NextTok.Type == token.OpenBracket {
+		parser.Advance()
+		parser.Advance()
+		var a ast.Array
+		if parser.CurTok.Type != token.CloseBracket {
+			a.Size = parser.ParseExpression(0)
+			parser.Advance()
+		}
+		a.Type = t
+		t = &a
+	}
+	return t
+}
+
+func (parser *Parser) ParseSimpleType() ast.Type {
+	typ, ok := parser.CurTok.Value.(string)
+	if !ok {
+		parser.Errors = append(parser.Errors, fmt.Errorf("Error at line %d: expected type, got %s", parser.CurTok.Line, parser.CurTok.Value))
+		return &ast.Void{}
+	}
+	switch typ {
+	case "int":
+		i := ast.Int(parser.CurTok)
+		return &i
+	case "float":
+		f := ast.Float(parser.CurTok)
+		return &f
+	case "string":
+		s := ast.String(parser.CurTok)
+		return &s
+	case "bool":
+		b := ast.Bool(parser.CurTok)
+		return &b
+	case "void":
+		v := ast.Void(parser.CurTok)
+		return &v
+	default:
+		parser.Errors = append(parser.Errors, fmt.Errorf("Error at line %d: expected type, got %s", parser.CurTok.Line, parser.CurTok.Value))
+		return &ast.Void{}
+	}
 }
