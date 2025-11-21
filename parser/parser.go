@@ -107,7 +107,7 @@ func (parser *Parser) ParseExpressionLeft() ast.Expression {
 		var arr ast.ArrayExpression
 		if parser.CurTok.Type != token.CloseBracket {
 			arr.Elements = append(arr.Elements, parser.ParseExpression(0))
-			parser.Advance()
+			parser.Advance() // TODO: error handling if token to consume isn't comma
 		}
 		for parser.CurTok.Type == token.Comma {
 			parser.Advance()
