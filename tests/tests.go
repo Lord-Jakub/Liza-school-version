@@ -4,7 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"lizalang/ast"
+	"lizalang/interpreter"
 	"lizalang/lexer"
+	"lizalang/object"
 	"lizalang/parser"
 )
 
@@ -34,4 +37,13 @@ func TestParser(parser *parser.Parser) {
 	for _, err := range parser.Errors {
 		fmt.Println(err)
 	}
+}
+
+func TestEval(expr ast.Expression) {
+	val, err := interpreter.Eval(expr)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	println(val.(*object.IntObject).Value)
 }
