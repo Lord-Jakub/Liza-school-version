@@ -108,6 +108,7 @@ func (lexer *Lexer) Lex() {
 			for lexer.CurChar == '*' && lexer.NextChar == '/' {
 				lexer.Advance()
 			}
+			lexer.Advance()
 			break
 		default:
 			if oneCharToken, ok := token.SymbolMap[lexer.CurChar]; ok {

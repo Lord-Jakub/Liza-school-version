@@ -8,11 +8,7 @@ import (
 )
 
 type Program struct {
-	Namespaces []Namespace
-}
-type Namespace struct {
-	Name token.Token
-	Body BodyStatement
+	Namespaces map[string]BodyStatement
 }
 
 type Node interface{}
@@ -151,6 +147,7 @@ type VariableDeclarationStatement struct {
 	Identifier token.Token
 	Type       Type
 	Value      Expression
+	Mutable    bool
 }
 
 func (*VariableDeclarationStatement) stmt() {}

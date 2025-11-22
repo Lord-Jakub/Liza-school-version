@@ -21,7 +21,7 @@ func New(tokens []token.Token) *Parser {
 	parser := &Parser{
 		Tokens:  tokens,
 		Pos:     0,
-		Program: ast.Program{},
+		Program: ast.Program{Namespaces: make(map[string]ast.BodyStatement, 0)},
 		Errors:  make([]error, 0),
 	}
 	if len(tokens) > 2 {
@@ -120,25 +120,46 @@ func (parser *Parser) ParseExpressionLeft() ast.Expression {
 	return &ast.InvalidExpression{}
 }
 
-func (parser *Parser) ParseNamespace() ast.Namespace {
-	namespace := ast.Namespace{}
+func (parser *Parser) Parse() {
+	namespaceName := ""
 	for parser.CurTok.Type != token.Keyword && parser.CurTok.Value != "namespace" {
 		if parser.CurTok.Type == token.EOF {
 			parser.Errors = append(parser.Errors, fmt.Errorf("Error: no namespace defined"))
-			return ast.Namespace{}
 		}
 		parser.Advance()
 	}
 	parser.Advance()
 	if parser.CurTok.Type == token.Identifier {
-		namespace.Name = parser.CurTok
+		namespaceName = parser.CurTok.Value.(string)
 	} else {
 		parser.Errors = append(parser.Errors, fmt.Errorf("Error: namespace not named"))
-		return ast.Namespace{}
 	}
 	parser.Advance()
-	namespace.Body = parser.ParseBody()
-	return namespace
+	for parser.CurTok.Type == token.NewInstruction {
+		parser.Advance()
+	}
+	for parser.CurTok.Type == token.Keyword && parser.CurTok.Value.(string) == "import" {
+		if parser.NextTok.Type == token.String {
+			parser.Advance()
+			if _, ok := parser.Program.Namespaces[parser.CurTok.Value.(string)]; ok {
+				// TODO: add namespace to namespaces to parse queue
+			}
+		} else {
+			parser.Errors = append(parser.Errors, fmt.Errorf("Error at line %d: expected string, got %s", parser.NextTok.Line, parser.NextTok.Value))
+			parser.Advance()
+			for parser.CurTok.Type == token.NewInstruction {
+				parser.Advance()
+			}
+		}
+	}
+	namespaceBody, ok := parser.Program.Namespaces[namespaceName]
+	if !ok {
+		parser.Program.Namespaces[namespaceName] = ast.BodyStatement{}
+	}
+
+	namespaceBody.Nodes = append(parser.Program.Namespaces[namespaceName].Nodes, parser.ParseBody().Nodes...)
+	parser.Program.Namespaces[namespaceName] = namespaceBody
+	// TODO: look for namespaces in queue and parse them
 }
 
 func (parser *Parser) ParseBody() ast.BodyStatement {
@@ -155,16 +176,10 @@ func (parser *Parser) ParseBody() ast.BodyStatement {
 		isNewIns := false
 		switch parser.CurTok.Type {
 		case token.Keyword:
+			if slices.Contains(token.Types, parser.CurTok.Value.(string)) {
+				node = parser.ParseVariableDeclaration()
+			}
 			switch parser.CurTok.Value {
-			case "int":
-				node = parser.ParseVariableDeclaration()
-				break
-			case "float":
-				node = parser.ParseVariableDeclaration()
-				break
-			case "string":
-				node = parser.ParseVariableDeclaration()
-				break
 			case "func":
 				node = parser.ParseFunctionDeclaration()
 				break
@@ -176,6 +191,12 @@ func (parser *Parser) ParseBody() ast.BodyStatement {
 				break
 			case "return":
 				node = parser.ParseReturnStatement()
+				break
+			case "constant":
+				parser.Advance()
+				constant := parser.ParseVariableDeclaration()
+				constant.Mutable = false
+				node = constant
 				break
 			}
 			break
@@ -212,6 +233,7 @@ func (parser *Parser) ParseBody() ast.BodyStatement {
 
 func (parser *Parser) ParseVariableDeclaration() ast.VariableDeclarationStatement {
 	var variable ast.VariableDeclarationStatement
+	variable.Mutable = true
 	variable.Type = parser.ParseType()
 	if parser.NextTok.Type == token.Identifier {
 		parser.Advance()

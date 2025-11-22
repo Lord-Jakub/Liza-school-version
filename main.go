@@ -8,8 +8,40 @@ import (
 )
 
 func main() {
-	code := `namespace test
-	int[2][2] i = [[1, 2],[3, 4]]`
+	code := `namespace Algorithms
+
+// Global variable test
+float PI = 3.14159
+
+// Function declaration test
+func fibonacci(int n) int {
+    // If statement test
+    if (n <= 1) {
+        return n
+    }
+    // Recursion and binary operators
+    return fibonacci(n - 1) + fibonacci(n - 2)
+}
+
+func main() void {
+    // Array declaration test
+    int[] numbers = [10, 20, 30, 40, 50]
+    
+    // Variable declaration
+    int sum = 0
+
+    // For loop test
+    for int i = 0; i < 5; i = i + 1 {
+        // Array Indexing Test (uses your infix logic)
+        int val = numbers[i]
+        
+        // Assignment and math
+        sum = sum + val
+    }
+    
+    // Complex expression test
+    int result = (sum * 2) / 5
+}`
 	// code := "!(5*3==15 && 5!=3)"
 	code = string(append([]byte(code), 0))
 	lex := lexer.New(code, "nil")
@@ -17,5 +49,6 @@ func main() {
 	// tests.TestLexer(lex)
 	par := parser.New(lex.Tokens)
 	// tests.TestParseExpression(par)
+	par.Parse()
 	tests.TestParser(par)
 }

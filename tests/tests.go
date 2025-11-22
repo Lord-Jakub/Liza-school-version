@@ -28,7 +28,7 @@ func TestParseExpression(parser *parser.Parser) {
 }
 
 func TestParser(parser *parser.Parser) {
-	data := parser.ParseNamespace()
+	data := parser.Program
 	jsonExpression, _ := json.MarshalIndent(data, "", "\t")
 	fmt.Println(string(jsonExpression))
 	for _, err := range parser.Errors {
