@@ -3,7 +3,6 @@ package tests
 import (
 	"encoding/json"
 	"fmt"
-
 	"lizalang/ast"
 	"lizalang/interpreter"
 	"lizalang/lexer"
@@ -45,5 +44,31 @@ func TestEval(expr ast.Expression) {
 		fmt.Println(err)
 		return
 	}
-	println(val.(*object.IntObject).Value)
+	PrintVal(val)
+	fmt.Println()
+	fmt.Println()
+}
+
+func PrintVal(val object.Object) {
+	v := val.GetValue()
+	switch v := v.(type) {
+	case (int64):
+		fmt.Printf("%d", v)
+	case (float64):
+		fmt.Printf("%f", v)
+	case (bool):
+		fmt.Printf("%t", v)
+	case (string):
+		fmt.Printf("%s", v)
+	case ([]object.Object):
+		fmt.Print("[")
+		for i, el := range v {
+			if i != 0 {
+				fmt.Print(",")
+			}
+			PrintVal(el)
+		}
+		fmt.Print("]")
+
+	}
 }

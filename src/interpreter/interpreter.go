@@ -2,7 +2,6 @@ package interpreter
 
 import (
 	"fmt"
-
 	"lizalang/ast"
 	"lizalang/object"
 )
@@ -22,12 +21,35 @@ func Eval(expression ast.Expression) (object.Object, error) {
 	case (*ast.VariableExpression):
 		break
 	case (*ast.ArrayExpression):
-		break
+		array := expression.(*ast.ArrayExpression)
+		return EvalArray(array)
 	default:
 		return &object.VoidObject{}, nil
 
 	}
 	return obj, nil
+}
+
+func EvalArray(array *ast.ArrayExpression) (object.Object, error) {
+	var elements []object.Object
+	var elementType object.Type
+	for i, element := range array.Elements {
+		elementObj, err := Eval(element)
+		if err != nil {
+			return &object.VoidObject{}, err
+		}
+		if i == 0 {
+			elementType = elementObj.Type()
+		}
+		if elementObj.Type() != elementType {
+			err = fmt.Errorf("cannot use element of type %s in array of type %s", elementObj.Type(), elementType)
+			if err != nil {
+				return &object.VoidObject{}, err
+			}
+		}
+		elements = append(elements, elementObj)
+	}
+	return &object.ArrayObject{len(elements), elementType, elements}, nil
 }
 
 func EvalLiteral(literal *ast.LiteralExpression) object.Object {
@@ -93,6 +115,12 @@ func EvalBinary(binary *ast.BinaryExpression) (object.Object, error) {
 	if right.Type() != left.Type() {
 		return &object.VoidObject{}, fmt.Errorf("cannot use %s on types %s and %s", op, right.Type(), left.Type())
 	}
+	if op == "==" {
+		return &object.BoolObject{left.GetValue() == right.GetValue()}, nil
+	}
+	if op == "!=" {
+		return &object.BoolObject{left.GetValue() != right.GetValue()}, nil
+	}
 	switch right.Type() {
 	case object.Int:
 		rightInt := right.(*object.IntObject)
@@ -122,10 +150,74 @@ func EvalBinary(binary *ast.BinaryExpression) (object.Object, error) {
 
 			// fmt.Printf("%d %s %d = %d\n", leftInt.Value, op, rightInt.Value, pow)
 			return &object.IntObject{pow}, nil
+		case "<":
+			return &object.BoolObject{leftInt.Value < rightInt.Value}, nil
+		case ">":
+			return &object.BoolObject{leftInt.Value > rightInt.Value}, nil
+		case "<=":
+			return &object.BoolObject{leftInt.Value <= rightInt.Value}, nil
+		case ">=":
+			return &object.BoolObject{leftInt.Value >= rightInt.Value}, nil
+
 		}
 	case object.Bool:
+		rightBool := right.(*object.BoolObject)
+		leftBool := left.(*object.BoolObject)
+		switch op {
+		case "&&":
+			// fmt.Printf("%d %s %d = %d\n", leftBool.Value, op, righBool.Value, leftBool.Value && rightBool.Value)
+			return &object.BoolObject{leftBool.Value && rightBool.Value}, nil
+		case "||":
+			// fmt.Printf("%d %s %d = %d\n", leftBool.Value, op, righBool.Value, leftBool.Value || rightBool.Value)
+			return &object.BoolObject{leftBool.Value || rightBool.Value}, nil
+		}
 	case object.Float:
+		rightFloat := right.(*object.FloatObject)
+		leftFloat := left.(*object.FloatObject)
+		switch op {
+		case "+":
+			// fmt.Printf("%d %s %d = %d\n", leftFloat.Value, op, rightFloat.Value, leftFloat.Value+rightFloat.Value)
+			return &object.FloatObject{leftFloat.Value + rightFloat.Value}, nil
+		case "-":
+			// fmt.Printf("%d %s %d = %d\n", leftFloat.Value, op, rightFloat.Value, leftFloat.Value-rightFloat.Value)
+			return &object.FloatObject{leftFloat.Value - rightFloat.Value}, nil
+		case "*":
+			// fmt.Printf("%d %s %d = %d\n", leftFloat.Value, op, rightFloat.Value, leftFloat.Value*rightFloat.Value)
+			return &object.FloatObject{leftFloat.Value * rightFloat.Value}, nil
+		case "/":
+			// fmt.Printf("%d %s %d = %d\n", leftFloat.Value, op, rightFloat.Value, leftFloat.Value/rightFloat.Value)
+			return &object.FloatObject{leftFloat.Value / rightFloat.Value}, nil
+		case "^":
+			pow := leftFloat.Value
+			if rightFloat.Value == 0 {
+				pow = 1
+			} else {
+				for i := 1; i < int(rightFloat.Value); i++ {
+					pow *= leftFloat.Value
+				}
+			}
+
+			// fmt.Printf("%d %s %d = %d\n", leftFloat.Value, op, rightFloat.Value, pow)
+			return &object.FloatObject{pow}, nil
+		case "<":
+			return &object.BoolObject{leftFloat.Value < rightFloat.Value}, nil
+		case ">":
+			return &object.BoolObject{leftFloat.Value > rightFloat.Value}, nil
+		case "<=":
+			return &object.BoolObject{leftFloat.Value <= rightFloat.Value}, nil
+		case ">=":
+			return &object.BoolObject{leftFloat.Value >= rightFloat.Value}, nil
+		}
+
 	case object.String:
+		rightString := right.(*object.StringObject)
+		leftString := left.(*object.StringObject)
+		switch op {
+		case "+":
+			// fmt.Printf("%d %s %d = %d\n", leftString.Value, op, rightString.Value, leftString.Value+rightString.Value)
+			return &object.StringObject{leftString.Value + rightString.Value}, nil
+		}
+
 	}
 	return nil, nil
 }

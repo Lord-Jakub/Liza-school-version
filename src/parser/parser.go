@@ -2,10 +2,9 @@ package parser
 
 import (
 	"fmt"
-	"slices"
-
 	"lizalang/ast"
 	"lizalang/token"
+	"slices"
 )
 
 type Parser struct {
