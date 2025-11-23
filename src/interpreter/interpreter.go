@@ -112,6 +112,20 @@ func EvalBinary(binary *ast.BinaryExpression) (object.Object, error) {
 	if err != nil {
 		return &object.VoidObject{}, err
 	}
+	if op == "[" {
+		array, ok := left.(*object.ArrayObject)
+		if !ok {
+			return &object.VoidObject{}, fmt.Errorf("expected array, got %s", left.Type())
+		}
+		index, ok := right.(*object.IntObject)
+		if !ok {
+			return &object.VoidObject{}, fmt.Errorf("expected int, got %s", left.Type())
+		}
+		if index.Value >= int64(array.Len) {
+			return &object.VoidObject{}, fmt.Errorf("Index %d out of bounds (array lenght is %d)", index.Value, array.Len)
+		}
+		return array.Value[index.Value], nil
+	}
 	if right.Type() != left.Type() {
 		return &object.VoidObject{}, fmt.Errorf("cannot use %s on types %s and %s", op, right.Type(), left.Type())
 	}

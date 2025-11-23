@@ -43,7 +43,7 @@ func main() {
 	    // Complex expression test
 	    int result = (sum * 2) / 5
 	}`*/
-	code := "(20/(1+1)*5-2*4+(66*5+6))*3-2^6"
+	code := "(20/(1+1)*5-2*4+(66*5+6))*3-2^([1, 2, 3, 4, 5, 6][5])"
 	code = string(append([]byte(code), 0))
 	code2 := "1+1 == 2 && 1==1"
 	code2 = string(append([]byte(code2), 0))
