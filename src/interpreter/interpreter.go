@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"lizalang/ast"
 	"lizalang/object"
+	"math"
 )
 
 func Eval(expression ast.Expression) (object.Object, error) {
@@ -202,17 +203,8 @@ func EvalBinary(binary *ast.BinaryExpression) (object.Object, error) {
 			// fmt.Printf("%d %s %d = %d\n", leftFloat.Value, op, rightFloat.Value, leftFloat.Value/rightFloat.Value)
 			return &object.FloatObject{leftFloat.Value / rightFloat.Value}, nil
 		case "^":
-			pow := leftFloat.Value
-			if rightFloat.Value == 0 {
-				pow = 1
-			} else {
-				for i := 1; i < int(rightFloat.Value); i++ {
-					pow *= leftFloat.Value
-				}
-			}
-
-			// fmt.Printf("%d %s %d = %d\n", leftFloat.Value, op, rightFloat.Value, pow)
-			return &object.FloatObject{pow}, nil
+			// fmt.Printf("%d %s %d = %d\n", leftFloat.Value, op, rightFloat.Value, math.Pow(leftFloat.Value, rightFloat.Value))
+			return &object.FloatObject{math.Pow(leftFloat.Value, rightFloat.Value)}, nil
 		case "<":
 			return &object.BoolObject{leftFloat.Value < rightFloat.Value}, nil
 		case ">":
