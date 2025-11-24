@@ -2,11 +2,10 @@ package lexer
 
 import (
 	"fmt"
-	"slices"
-	"strconv"
-
 	"lizalang/token"
 	"lizalang/utils"
+	"slices"
+	"strconv"
 )
 
 type Lexer struct {
@@ -30,7 +29,7 @@ func (lexer *Lexer) Advance() {
 
 func New(code string, file string) *Lexer {
 	lexer := &Lexer{
-		[]rune(code),
+		[]rune(code + string(0)),
 		0,
 		1,
 		0,

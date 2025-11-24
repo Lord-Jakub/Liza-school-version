@@ -40,8 +40,8 @@ func (parser *Parser) Advance() {
 }
 
 var (
-	precedence         = map[string]int{"[": 1, "&&": 2, "||": 2, "==": 3, "!=": 3, "<=": 3, ">=": 3, "<": 3, ">": 3, "+": 4, "-": 4, "*": 5, "/": 5, "^": 6}
-	isRightAssociative = map[string]bool{"[": false, "&&": false, "||": false, "==": false, "!=": false, "<=": false, ">=": false, "<": false, ">": false, "+": false, "-": false, "*": false, "/": false, "^": true}
+	precedence         = map[string]int{"[": 1, "&&": 2, "||": 2, "==": 3, "!=": 3, "<=": 3, ">=": 3, "<": 3, ">": 3, "+": 4, "-": 4, "*": 5, "/": 5, "^": 6, ".": 7}
+	isRightAssociative = map[string]bool{"[": false, "&&": false, "||": false, "==": false, "!=": false, "<=": false, ">=": false, "<": false, ">": false, "+": false, "-": false, "*": false, "/": false, "^": true, ".": false}
 )
 
 func (parser *Parser) ParseExpression(precLimit int) ast.Expression {
@@ -50,7 +50,7 @@ func (parser *Parser) ParseExpression(precLimit int) ast.Expression {
 	for {
 		op := parser.NextTok
 
-		if op.Type != token.Operator && op.Type != token.OpenBracket {
+		if op.Type != token.Operator && op.Type != token.OpenBracket && op.Type != token.Dot {
 			break
 		}
 		if precedence[op.Value.(string)] <= precLimit {
@@ -283,6 +283,7 @@ func (parser *Parser) ParseFunctionCall() ast.FunctionCall {
 
 func (parser *Parser) ParseFunctionDeclaration() ast.FunctionDeclarationStatement {
 	var function ast.FunctionDeclarationStatement
+	function.Type = &ast.Void{}
 	if parser.NextTok.Type == token.Identifier {
 		parser.Advance()
 		function.Name = parser.CurTok
@@ -309,9 +310,6 @@ func (parser *Parser) ParseFunctionDeclaration() ast.FunctionDeclarationStatemen
 		parser.Advance()
 	}
 	if parser.CurTok.Type == token.OpenBrace {
-		if function.Type == nil {
-			function.Type = &ast.Void{}
-		}
 		function.Body = parser.ParseBody()
 	} else {
 		parser.Errors = append(parser.Errors, fmt.Errorf("Error at line %d: expected type or {, got %s", parser.CurTok.Line, parser.CurTok.Value))

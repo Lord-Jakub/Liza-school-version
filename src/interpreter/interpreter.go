@@ -3,227 +3,79 @@ package interpreter
 import (
 	"fmt"
 	"lizalang/ast"
-	"lizalang/object"
-	"math"
+	"lizalang/interpreter/environment"
+	"lizalang/interpreter/eval"
 )
 
-func Eval(expression ast.Expression) (object.Object, error) {
-	var obj object.Object
-	switch expression.(type) {
-	case (*ast.LiteralExpression):
-		literal := expression.(*ast.LiteralExpression)
-		return EvalLiteral(literal), nil
-	case (*ast.BinaryExpression):
-		binary := expression.(*ast.BinaryExpression)
-		return EvalBinary(binary)
-	case (*ast.UnaryExpression):
-		unary := expression.(*ast.UnaryExpression)
-		return EvalUnary(unary)
-	case (*ast.VariableExpression):
-		break
-	case (*ast.ArrayExpression):
-		array := expression.(*ast.ArrayExpression)
-		return EvalArray(array)
-	default:
-		return &object.VoidObject{}, nil
+var (
+	Namespaces map[string]*environment.Environment = make(map[string]*environment.Environment)
+	BuildIns   map[string]func(...ast.Expression)  = make(map[string]func(...ast.Expression))
+)
 
-	}
-	return obj, nil
-}
-
-func EvalArray(array *ast.ArrayExpression) (object.Object, error) {
-	var elements []object.Object
-	var elementType object.Type
-	for i, element := range array.Elements {
-		elementObj, err := Eval(element)
-		if err != nil {
-			return &object.VoidObject{}, err
-		}
-		if i == 0 {
-			elementType = elementObj.Type()
-		}
-		if elementObj.Type() != elementType {
-			err = fmt.Errorf("cannot use element of type %s in array of type %s", elementObj.Type(), elementType)
+func Init() {
+	BuildIns["print"] = func(args ...ast.Expression) {
+		for _, arg := range args {
+			argVal, err := eval.Eval(arg)
 			if err != nil {
-				return &object.VoidObject{}, err
+				panic(err) // TODO: also handle err
 			}
+			fmt.Print(argVal.GetValue())
 		}
-		elements = append(elements, elementObj)
-	}
-	return &object.ArrayObject{len(elements), elementType, elements}, nil
-}
-
-func EvalLiteral(literal *ast.LiteralExpression) object.Object {
-	switch literal.Value.Type {
-	case "INT":
-		return &object.IntObject{literal.Value.Value.(int64)}
-	case "FLOAT":
-		return &object.FloatObject{literal.Value.Value.(float64)}
-	case "BOOL":
-		return &object.BoolObject{literal.Value.Value.(bool)}
-	case "STRING":
-		return &object.StringObject{literal.Value.Value.(string)}
-	default:
-		return &object.VoidObject{}
 	}
 }
 
-func EvalUnary(unary *ast.UnaryExpression) (object.Object, error) {
-	switch unary.Prefix.Value {
-	case "-":
-		value, err := Eval(unary.Value)
-		if err != nil {
-			return &object.VoidObject{}, err
-		}
-		if value.Type() == object.Int {
-			value.(*object.IntObject).Value = -value.(*object.IntObject).Value
-			return value, nil
-		} else if value.Type() == object.Float {
-			value.(*object.FloatObject).Value = -value.(*object.FloatObject).Value
-			return value, nil
-		} else {
-			return value, fmt.Errorf("cannot use prefix - on %s", value.Type())
-		}
-	case "+":
-		return Eval(unary.Value)
-	case "!":
-		value, err := Eval(unary.Value)
-		if err != nil {
-			return &object.VoidObject{}, err
-		}
-		if value.Type() == object.Bool {
-			value.(*object.BoolObject).Value = !value.(*object.BoolObject).Value
-			return value, nil
-		} else {
-			return value, fmt.Errorf("cannot use prefix - on %s", value.Type())
-		}
+func GetNamespaces(program *ast.Program) {
+	for namespaceName, namespace := range program.Namespaces {
+		env := environment.New()
+		for _, node := range namespace.Nodes {
+			switch node.(type) {
+			case (ast.FunctionDeclarationStatement):
+				f := node.(ast.FunctionDeclarationStatement)
+				env.DeclareFunc(f.Name.Value.(string), &f)
+				break
+			case (ast.VariableDeclarationStatement):
+				v := node.(ast.VariableDeclarationStatement)
 
-	default:
-		return &object.VoidObject{}, fmt.Errorf("unexpected +, -, or !, got %s", unary.Prefix.Value.(string))
-	}
-}
-
-func EvalBinary(binary *ast.BinaryExpression) (object.Object, error) {
-	left, err := Eval(binary.Left)
-	if err != nil {
-		return &object.VoidObject{}, err
-	}
-	op := binary.Op.Value.(string)
-	right, err := Eval(binary.Right)
-	if err != nil {
-		return &object.VoidObject{}, err
-	}
-	if op == "[" {
-		array, ok := left.(*object.ArrayObject)
-		if !ok {
-			return &object.VoidObject{}, fmt.Errorf("expected array, got %s", left.Type())
-		}
-		index, ok := right.(*object.IntObject)
-		if !ok {
-			return &object.VoidObject{}, fmt.Errorf("expected int, got %s", left.Type())
-		}
-		if index.Value >= int64(array.Len) {
-			return &object.VoidObject{}, fmt.Errorf("Index %d out of bounds (array lenght is %d)", index.Value, array.Len)
-		}
-		return array.Value[index.Value], nil
-	}
-	if right.Type() != left.Type() {
-		return &object.VoidObject{}, fmt.Errorf("cannot use %s on types %s and %s", op, right.Type(), left.Type())
-	}
-	if op == "==" {
-		return &object.BoolObject{left.GetValue() == right.GetValue()}, nil
-	}
-	if op == "!=" {
-		return &object.BoolObject{left.GetValue() != right.GetValue()}, nil
-	}
-	switch right.Type() {
-	case object.Int:
-		rightInt := right.(*object.IntObject)
-		leftInt := left.(*object.IntObject)
-		switch op {
-		case "+":
-			// fmt.Printf("%d %s %d = %d\n", leftInt.Value, op, rightInt.Value, leftInt.Value+rightInt.Value)
-			return &object.IntObject{leftInt.Value + rightInt.Value}, nil
-		case "-":
-			// fmt.Printf("%d %s %d = %d\n", leftInt.Value, op, rightInt.Value, leftInt.Value-rightInt.Value)
-			return &object.IntObject{leftInt.Value - rightInt.Value}, nil
-		case "*":
-			// fmt.Printf("%d %s %d = %d\n", leftInt.Value, op, rightInt.Value, leftInt.Value*rightInt.Value)
-			return &object.IntObject{leftInt.Value * rightInt.Value}, nil
-		case "/":
-			// fmt.Printf("%d %s %d = %d\n", leftInt.Value, op, rightInt.Value, leftInt.Value/rightInt.Value)
-			return &object.IntObject{leftInt.Value / rightInt.Value}, nil
-		case "^":
-			pow := leftInt.Value
-			if rightInt.Value == 0 {
-				pow = 1
-			} else {
-				for i := 1; i < int(rightInt.Value); i++ {
-					pow *= leftInt.Value
-				}
+				env.DeclareVar(v)
+				break
 			}
-
-			// fmt.Printf("%d %s %d = %d\n", leftInt.Value, op, rightInt.Value, pow)
-			return &object.IntObject{pow}, nil
-		case "<":
-			return &object.BoolObject{leftInt.Value < rightInt.Value}, nil
-		case ">":
-			return &object.BoolObject{leftInt.Value > rightInt.Value}, nil
-		case "<=":
-			return &object.BoolObject{leftInt.Value <= rightInt.Value}, nil
-		case ">=":
-			return &object.BoolObject{leftInt.Value >= rightInt.Value}, nil
-
+			Namespaces[namespaceName] = &env
 		}
-	case object.Bool:
-		rightBool := right.(*object.BoolObject)
-		leftBool := left.(*object.BoolObject)
-		switch op {
-		case "&&":
-			// fmt.Printf("%d %s %d = %d\n", leftBool.Value, op, righBool.Value, leftBool.Value && rightBool.Value)
-			return &object.BoolObject{leftBool.Value && rightBool.Value}, nil
-		case "||":
-			// fmt.Printf("%d %s %d = %d\n", leftBool.Value, op, righBool.Value, leftBool.Value || rightBool.Value)
-			return &object.BoolObject{leftBool.Value || rightBool.Value}, nil
-		}
-	case object.Float:
-		rightFloat := right.(*object.FloatObject)
-		leftFloat := left.(*object.FloatObject)
-		switch op {
-		case "+":
-			// fmt.Printf("%d %s %d = %d\n", leftFloat.Value, op, rightFloat.Value, leftFloat.Value+rightFloat.Value)
-			return &object.FloatObject{leftFloat.Value + rightFloat.Value}, nil
-		case "-":
-			// fmt.Printf("%d %s %d = %d\n", leftFloat.Value, op, rightFloat.Value, leftFloat.Value-rightFloat.Value)
-			return &object.FloatObject{leftFloat.Value - rightFloat.Value}, nil
-		case "*":
-			// fmt.Printf("%d %s %d = %d\n", leftFloat.Value, op, rightFloat.Value, leftFloat.Value*rightFloat.Value)
-			return &object.FloatObject{leftFloat.Value * rightFloat.Value}, nil
-		case "/":
-			// fmt.Printf("%d %s %d = %d\n", leftFloat.Value, op, rightFloat.Value, leftFloat.Value/rightFloat.Value)
-			return &object.FloatObject{leftFloat.Value / rightFloat.Value}, nil
-		case "^":
-			// fmt.Printf("%d %s %d = %d\n", leftFloat.Value, op, rightFloat.Value, math.Pow(leftFloat.Value, rightFloat.Value))
-			return &object.FloatObject{math.Pow(leftFloat.Value, rightFloat.Value)}, nil
-		case "<":
-			return &object.BoolObject{leftFloat.Value < rightFloat.Value}, nil
-		case ">":
-			return &object.BoolObject{leftFloat.Value > rightFloat.Value}, nil
-		case "<=":
-			return &object.BoolObject{leftFloat.Value <= rightFloat.Value}, nil
-		case ">=":
-			return &object.BoolObject{leftFloat.Value >= rightFloat.Value}, nil
-		}
-
-	case object.String:
-		rightString := right.(*object.StringObject)
-		leftString := left.(*object.StringObject)
-		switch op {
-		case "+":
-			// fmt.Printf("%d %s %d = %d\n", leftString.Value, op, rightString.Value, leftString.Value+rightString.Value)
-			return &object.StringObject{leftString.Value + rightString.Value}, nil
-		}
-
 	}
-	return nil, nil
+}
+
+func Interpret(body *ast.BodyStatement, env *environment.Environment) error {
+	for _, node := range body.Nodes {
+		switch node.(type) {
+		case (ast.FunctionDeclarationStatement):
+			f := node.(ast.FunctionDeclarationStatement)
+			env.DeclareFunc(f.Name.Value.(string), &f)
+			break
+		case (ast.VariableDeclarationStatement):
+			v := node.(ast.VariableDeclarationStatement)
+			env.DeclareVar(v)
+			break
+		case (ast.FunctionCall):
+			functionCall := node.(ast.FunctionCall)
+			if function, ok := BuildIns[functionCall.Identifier.Value.(string)]; ok {
+				function(functionCall.Args...)
+				break
+			}
+			function, ok := env.GetFunc(functionCall.Identifier.Value.(string))
+			if !ok {
+				return fmt.Errorf("function %s is not declared", functionCall.Identifier.Value.(string))
+			}
+			if len(function.Args) != len(functionCall.Args) {
+				return fmt.Errorf("function %s need %d arguments, provided %d", functionCall.Identifier.Value.(string), len(function.Args), len(functionCall.Args))
+			}
+			for i := range function.Args {
+				function.Args[i].Value = functionCall.Args[i]
+			}
+			funcEnv := environment.New()
+			funcEnv.Outer = env
+			Interpret(&function.Body, &funcEnv)
+			break
+		}
+	}
+	return nil
 }

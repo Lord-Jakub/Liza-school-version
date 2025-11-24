@@ -29,6 +29,7 @@ const (
 	Float          = "FLOAT"
 	OpenBracket    = "OPENBRACKET"
 	CloseBracket   = "CLOSEBRACKET"
+	Dot            = "DOT"
 )
 
 var SymbolMap = map[rune]TokenType{
@@ -50,6 +51,7 @@ var SymbolMap = map[rune]TokenType{
 	'[':  OpenBracket,
 	']':  CloseBracket,
 	'^':  Operator,
+	'.':  Dot,
 }
 
 var (

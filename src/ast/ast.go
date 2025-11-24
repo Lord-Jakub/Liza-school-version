@@ -2,9 +2,8 @@ package ast
 
 import (
 	"fmt"
-	"strconv"
-
 	"lizalang/token"
+	"strconv"
 )
 
 type Program struct {
@@ -169,32 +168,32 @@ type ForStatement struct {
 func (*ForStatement) stmt() {}
 
 type Type interface {
-	t()
+	T() string
 }
 
 type Int token.Token
 
-func (*Int) t() {}
+func (*Int) T() string { return "int" }
 
 type Float token.Token
 
-func (*Float) t() {}
+func (*Float) T() string { return "float" }
 
 type String token.Token
 
-func (*String) t() {}
+func (*String) T() string { return "string" }
 
 type Bool token.Token
 
-func (*Bool) t() {}
+func (*Bool) T() string { return "string" }
 
 type Array struct {
 	Type Type
 	Size Expression
 }
 
-func (*Array) t() {}
+func (a *Array) T() string { return fmt.Sprintf("array of %s", a.Type.T()) }
 
 type Void token.Token
 
-func (*Void) t() {}
+func (*Void) T() string { return "void" }
