@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"lizalang/ast"
-	"lizalang/interpreter/eval"
+	eae "lizalang/interpreter"
 	"lizalang/interpreter/object"
 	"lizalang/lexer"
 	"lizalang/parser"
@@ -38,8 +38,9 @@ func TestParser(parser *parser.Parser) {
 	}
 }
 
-func TestEval(expr ast.Expression) {
-	val, err := eval.Eval(expr)
+func Testeae(expr ast.Expression) {
+	var env eae.Environment
+	val, err := eae.Eval(expr, &env)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -128,25 +129,25 @@ code := `namespace Algorithms
 	// tests.TestParser(par)
 	fmt.Printf("%s = ", code)
 	par2 := parser.New(lex.Tokens)
-	tests.TestEval(par2.ParseExpression(0))
+	tests.Testeae(par2.ParseExpression(0))
 
 	lex2 := lexer.New(code2, "")
 	lex2.Lex()
 	fmt.Printf("%s = ", code2)
-	tests.TestEval(parser.New(lex2.Tokens).ParseExpression(0))
+	tests.Testeae(parser.New(lex2.Tokens).ParseExpression(0))
 
 	lex3 := lexer.New(code3, "")
 	lex3.Lex()
 	fmt.Printf("%s = ", code3)
-	tests.TestEval(parser.New(lex3.Tokens).ParseExpression(0))
+	tests.Testeae(parser.New(lex3.Tokens).ParseExpression(0))
 
 	lex4 := lexer.New(code4, "")
 	lex4.Lex()
 	fmt.Printf("%s = ", code4)
-	tests.TestEval(parser.New(lex4.Tokens).ParseExpression(0))
+	tests.Testeae(parser.New(lex4.Tokens).ParseExpression(0))
 
 	lex5 := lexer.New(code5, "")
 	lex5.Lex()
 	fmt.Printf("%s = ", code5)
-	tests.TestEval(parser.New(lex5.Tokens).ParseExpression(0))
+	tests.Testeae(parser.New(lex5.Tokens).ParseExpression(0))
 */

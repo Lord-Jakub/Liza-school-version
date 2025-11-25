@@ -3,19 +3,18 @@ package interpreter
 import (
 	"fmt"
 	"lizalang/ast"
-	"lizalang/interpreter/environment"
-	"lizalang/interpreter/eval"
+	"lizalang/interpreter/object"
 )
 
 var (
-	Namespaces map[string]*environment.Environment = make(map[string]*environment.Environment)
-	BuildIns   map[string]func(...ast.Expression)  = make(map[string]func(...ast.Expression))
+	Namespaces map[string]*Environment                          = make(map[string]*Environment)
+	BuildIns   map[string]func(*Environment, ...ast.Expression) = make(map[string]func(*Environment, ...ast.Expression))
 )
 
 func Init() {
-	BuildIns["print"] = func(args ...ast.Expression) {
+	BuildIns["print"] = func(env *Environment, args ...ast.Expression) {
 		for _, arg := range args {
-			argVal, err := eval.Eval(arg)
+			argVal, err := Eval(arg, env)
 			if err != nil {
 				panic(err) // TODO: also handle err
 			}
@@ -26,7 +25,7 @@ func Init() {
 
 func GetNamespaces(program *ast.Program) {
 	for namespaceName, namespace := range program.Namespaces {
-		env := environment.New()
+		env := NewEnv()
 		for _, node := range namespace.Nodes {
 			switch node.(type) {
 			case (ast.FunctionDeclarationStatement):
@@ -44,7 +43,7 @@ func GetNamespaces(program *ast.Program) {
 	}
 }
 
-func Interpret(body *ast.BodyStatement, env *environment.Environment) error {
+func Interpret(body *ast.BodyStatement, env *Environment) error {
 	for _, node := range body.Nodes {
 		switch node.(type) {
 		case (ast.FunctionDeclarationStatement):
@@ -57,23 +56,41 @@ func Interpret(body *ast.BodyStatement, env *environment.Environment) error {
 			break
 		case (ast.FunctionCall):
 			functionCall := node.(ast.FunctionCall)
-			if function, ok := BuildIns[functionCall.Identifier.Value.(string)]; ok {
-				function(functionCall.Args...)
-				break
+			_, err := env.CallFunction(&functionCall)
+			if err != nil {
+				return err
 			}
-			function, ok := env.GetFunc(functionCall.Identifier.Value.(string))
-			if !ok {
-				return fmt.Errorf("function %s is not declared", functionCall.Identifier.Value.(string))
+			break
+		case (ast.ReturnStatement):
+			retVal, err := Eval(node.(ast.ReturnStatement).ReturnValue, env)
+			env.Return = &retVal
+			return err
+		case (ast.IfStatement):
+			ifStmt := node.(ast.IfStatement)
+			condition, err := Eval(ifStmt.Condition, env)
+			if err != nil {
+				return err
 			}
-			if len(function.Args) != len(functionCall.Args) {
-				return fmt.Errorf("function %s need %d arguments, provided %d", functionCall.Identifier.Value.(string), len(function.Args), len(functionCall.Args))
+			if condition.Type() != object.Bool {
+				return fmt.Errorf("non-bool condition is not allowed")
 			}
-			for i := range function.Args {
-				function.Args[i].Value = functionCall.Args[i]
+			if condition.GetValue().(bool) {
+				scope := NewEnv()
+				scope.Outer = env
+				Interpret(&ifStmt.Body, &scope)
+				if scope.Return != nil {
+					env.Return = scope.Return
+					return nil
+				}
+			} else {
+				scope := NewEnv()
+				scope.Outer = env
+				Interpret(&ifStmt.Alternative, &scope)
+				if scope.Return != nil {
+					env.Return = scope.Return
+					return nil
+				}
 			}
-			funcEnv := environment.New()
-			funcEnv.Outer = env
-			Interpret(&function.Body, &funcEnv)
 			break
 		}
 	}

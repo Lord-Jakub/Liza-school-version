@@ -1,4 +1,4 @@
-package eval
+package interpreter
 
 import (
 	"fmt"
@@ -7,7 +7,7 @@ import (
 	"math"
 )
 
-func Eval(expression ast.Expression) (object.Object, error) {
+func Eval(expression ast.Expression, env *Environment) (object.Object, error) {
 	var obj object.Object
 	switch expression.(type) {
 	case (*ast.LiteralExpression):
@@ -15,15 +15,27 @@ func Eval(expression ast.Expression) (object.Object, error) {
 		return EvalLiteral(literal), nil
 	case (*ast.BinaryExpression):
 		binary := expression.(*ast.BinaryExpression)
-		return EvalBinary(binary)
+		return EvalBinary(binary, env)
 	case (*ast.UnaryExpression):
 		unary := expression.(*ast.UnaryExpression)
-		return EvalUnary(unary)
+		return EvalUnary(unary, env)
 	case (*ast.VariableExpression):
-		break
+		variableEx := expression.(*ast.VariableExpression)
+		variable, ok := env.GetVar(variableEx.String())
+		if !ok {
+			return &object.VoidObject{}, fmt.Errorf("variable %s does not exist", variableEx.String())
+		}
+		return variable.Value, nil
 	case (*ast.ArrayExpression):
 		array := expression.(*ast.ArrayExpression)
-		return EvalArray(array)
+		return EvalArray(array, env)
+	case (*ast.FunctionCall):
+		functionCall := expression.(*ast.FunctionCall)
+		retEnv, err := env.CallFunction(functionCall)
+		if retEnv.Return == nil {
+			return nil, err
+		}
+		return *retEnv.Return, err
 	default:
 		return &object.VoidObject{}, nil
 
@@ -31,11 +43,11 @@ func Eval(expression ast.Expression) (object.Object, error) {
 	return obj, nil
 }
 
-func EvalArray(array *ast.ArrayExpression) (object.Object, error) {
+func EvalArray(array *ast.ArrayExpression, env *Environment) (object.Object, error) {
 	var elements []object.Object
 	var elementType object.Type
 	for i, element := range array.Elements {
-		elementObj, err := Eval(element)
+		elementObj, err := Eval(element, env)
 		if err != nil {
 			return &object.VoidObject{}, err
 		}
@@ -68,10 +80,10 @@ func EvalLiteral(literal *ast.LiteralExpression) object.Object {
 	}
 }
 
-func EvalUnary(unary *ast.UnaryExpression) (object.Object, error) {
+func EvalUnary(unary *ast.UnaryExpression, env *Environment) (object.Object, error) {
 	switch unary.Prefix.Value {
 	case "-":
-		value, err := Eval(unary.Value)
+		value, err := Eval(unary.Value, env)
 		if err != nil {
 			return &object.VoidObject{}, err
 		}
@@ -85,9 +97,9 @@ func EvalUnary(unary *ast.UnaryExpression) (object.Object, error) {
 			return value, fmt.Errorf("cannot use prefix - on %s", value.Type())
 		}
 	case "+":
-		return Eval(unary.Value)
+		return Eval(unary.Value, env)
 	case "!":
-		value, err := Eval(unary.Value)
+		value, err := Eval(unary.Value, env)
 		if err != nil {
 			return &object.VoidObject{}, err
 		}
@@ -103,13 +115,13 @@ func EvalUnary(unary *ast.UnaryExpression) (object.Object, error) {
 	}
 }
 
-func EvalBinary(binary *ast.BinaryExpression) (object.Object, error) {
-	left, err := Eval(binary.Left)
+func EvalBinary(binary *ast.BinaryExpression, env *Environment) (object.Object, error) {
+	left, err := Eval(binary.Left, env)
 	if err != nil {
 		return &object.VoidObject{}, err
 	}
 	op := binary.Op.Value.(string)
-	right, err := Eval(binary.Right)
+	right, err := Eval(binary.Right, env)
 	if err != nil {
 		return &object.VoidObject{}, err
 	}

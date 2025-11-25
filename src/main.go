@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"lizalang/interpreter"
-	"lizalang/interpreter/environment"
 	"lizalang/lexer"
 	"lizalang/parser"
 	"os"
@@ -70,9 +69,9 @@ func main() {
 	if ctx.Interpret {
 		interpreter.GetNamespaces(&par.Program)
 		interpreter.Init()
-		env := environment.New()
+		env := interpreter.Namespaces["main"]
 		main, _ := interpreter.Namespaces["main"].GetFunc("main")
-		interpreter.Interpret(&main.Body, &env)
+		interpreter.Interpret(&main.Body, env)
 
 		/*jsonData, _ := json.MarshalIndent(interpreter.Namespaces, "", "\t")
 		println(string(jsonData))*/

@@ -1,9 +1,8 @@
-package environment
+package interpreter
 
 import (
 	"fmt"
 	"lizalang/ast"
-	"lizalang/interpreter/eval"
 	"lizalang/interpreter/object"
 )
 
@@ -14,7 +13,7 @@ type Environment struct {
 	Return     *object.Object
 }
 
-func New() Environment {
+func NewEnv() Environment {
 	return Environment{
 		make(map[string]*Variable),
 		make(map[string]*ast.FunctionDeclarationStatement),
@@ -40,17 +39,17 @@ func (env *Environment) GetVar(name string) (*Variable, bool) {
 	return variable, ok
 }
 
-func (env *Environment) DeclareVar(v ast.VariableDeclarationStatement) error {
+func (env *Environment) DeclareVar(v ast.VariableDeclarationStatement) (*Variable, error) {
 	var vValue object.Object
 	if v.Value != nil {
 		var err error
-		vValue, err = eval.Eval(v.Value)
+		vValue, err = Eval(v.Value, env)
 		if err != nil {
 			// TODO: handle errs
 			panic(err)
 		}
 	}
-	if vValue.Type() != object.Type(v.Type.T()) {
+	if vValue != nil && vValue.Type() != object.Type(v.Type.T()) {
 		// TODO: handle err
 		panic("wrong type bro")
 	}
@@ -68,10 +67,10 @@ func (env *Environment) DeclareVar(v ast.VariableDeclarationStatement) error {
 		}
 	}
 	if ok {
-		return fmt.Errorf("cannot redeclare variable %s", variable.Name)
+		return nil, fmt.Errorf("cannot redeclare variable %s", variable.Name)
 	}
 	env.StoreVars[variable.Name] = variable
-	return nil
+	return variable, nil
 }
 
 func (env *Environment) GetFunc(name string) (*ast.FunctionDeclarationStatement, bool) {
@@ -96,4 +95,35 @@ func (env *Environment) DeclareFunc(name string, function *ast.FunctionDeclarati
 	}
 	env.StoreFuncs[name] = function
 	return nil
+}
+
+func (env *Environment) CallFunction(functionCall *ast.FunctionCall) (*Environment, error) {
+	if function, ok := BuildIns[functionCall.Identifier.Value.(string)]; ok {
+		function(env, functionCall.Args...)
+		return env, nil
+	}
+	function, ok := env.GetFunc(functionCall.Identifier.Value.(string))
+	if !ok {
+		return env, fmt.Errorf("function %s is not declared", functionCall.Identifier.Value.(string))
+	}
+	if len(function.Args) != len(functionCall.Args) {
+		return env, fmt.Errorf("function %s need %d arguments, provided %d", functionCall.Identifier.Value.(string), len(function.Args), len(functionCall.Args))
+	}
+
+	funcEnv := NewEnv()
+	for i, arg := range functionCall.Args {
+		variable, _ := funcEnv.DeclareVar(function.Args[i])
+		var err error
+		variable.Value, err = Eval(arg, env)
+		if err != nil {
+			return env, err
+		}
+	}
+	funcEnv.Outer = env
+	err := Interpret(&function.Body, &funcEnv)
+	retVal := *funcEnv.Return
+	if string(retVal.Type()) != function.Type.T() {
+		return env, fmt.Errorf("cannot return type %s in function of type %s", retVal.Type(), function.Type.T())
+	}
+	return &funcEnv, err
 }
