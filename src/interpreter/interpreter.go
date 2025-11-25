@@ -92,6 +92,24 @@ func Interpret(body *ast.BodyStatement, env *Environment) error {
 				}
 			}
 			break
+		case (ast.VariableAssignmentStatement):
+			varStmt := node.(ast.VariableAssignmentStatement)
+			target, ok := env.GetVar(varStmt.Target.Value.(string))
+			if !ok {
+				return fmt.Errorf("variable %s is not declared", varStmt.Target.Value.(string))
+			}
+			if !target.Mutable {
+				return fmt.Errorf("variable %s isn't mutable", varStmt.Target.Value.(string))
+			}
+			value, err := Eval(varStmt.Value, env)
+			if err != nil {
+				return err
+			}
+			if value.Type() != target.Type {
+				return fmt.Errorf("cannot assign value of type %s to variable of type %s", value.Type(), target.Type)
+			}
+			target.Value = value
+			break
 		}
 	}
 	return nil
