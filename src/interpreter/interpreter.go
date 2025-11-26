@@ -110,6 +110,38 @@ func Interpret(body *ast.BodyStatement, env *Environment) error {
 			}
 			target.Value = value
 			break
+		case (ast.ForStatement):
+			forStmt := node.(ast.ForStatement)
+
+			scope := NewEnv()
+			scope.Outer = env
+			scope.DeclareVar(forStmt.Init)
+			conditionVal, err := Eval(forStmt.Condition, &scope)
+			if err != nil {
+				return err
+			}
+
+			condition, ok := conditionVal.GetValue().(bool)
+			if !ok {
+				return fmt.Errorf("non-bool condition is not allowed")
+			}
+
+			forStmt.Body.Nodes = append(forStmt.Body.Nodes, forStmt.Post)
+
+			for condition {
+				Interpret(&forStmt.Body, &scope)
+				if scope.Return != nil {
+					env.Return = scope.Return
+					return nil
+				}
+				conditionVal, err = Eval(forStmt.Condition, &scope)
+				if err != nil {
+					return err
+				}
+				condition = conditionVal.GetValue().(bool)
+			}
+			break
+
 		}
 	}
 	return nil
