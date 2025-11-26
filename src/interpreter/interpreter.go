@@ -94,21 +94,40 @@ func Interpret(body *ast.BodyStatement, env *Environment) error {
 			break
 		case (ast.VariableAssignmentStatement):
 			varStmt := node.(ast.VariableAssignmentStatement)
-			target, ok := env.GetVar(varStmt.Target.Value.(string))
+			name, err := GetVariableName(varStmt.Target)
+			if err != nil {
+				return err
+			}
+			target, ok := env.GetVar(name)
+			var isArr bool
+			var index int64
+			if _, isArr = varStmt.Target.(*ast.BinaryExpression); isArr {
+				arr, _ := varStmt.Target.(*ast.BinaryExpression)
+				indexObj, err := Eval(arr.Right, env)
+				if err != nil {
+					return err
+				}
+				index = indexObj.GetValue().(int64)
+			}
 			if !ok {
-				return fmt.Errorf("variable %s is not declared", varStmt.Target.Value.(string))
+				return fmt.Errorf("variable %s is not declared", name)
 			}
 			if !target.Mutable {
-				return fmt.Errorf("variable %s isn't mutable", varStmt.Target.Value.(string))
+				return fmt.Errorf("variable %s isn't mutable", name)
 			}
 			value, err := Eval(varStmt.Value, env)
 			if err != nil {
 				return err
 			}
-			if value.Type() != target.Type {
+
+			if value.Type() != target.Type && !isArr {
 				return fmt.Errorf("cannot assign value of type %s to variable of type %s", value.Type(), target.Type)
 			}
-			target.Value = value
+			if !isArr {
+				target.Value = value
+			} else {
+				target.Value.(*object.ArrayObject).Value[index] = value
+			}
 			break
 		case (ast.ForStatement):
 			forStmt := node.(ast.ForStatement)
@@ -145,4 +164,28 @@ func Interpret(body *ast.BodyStatement, env *Environment) error {
 		}
 	}
 	return nil
+}
+
+/*
+	func GetVarFromExpression(expression ast.Expression, env *Environment) (*Variable, bool){
+		if arrIdx, ok := expression.(*ast.BinaryExpression); ok{
+					var array *Variable
+					array, ok = GetVarFromExpression(arrIdx.Left, env)
+					index, err:= Eval(arrIdx.Right, env)
+					panic(err)
+					valAtIndex := array.Value.(*object.ArrayObject).Value[index.GetValue().(int64)]
+					return
+				} else {
+
+				}
+	}
+*/
+func GetVariableName(expression ast.Expression) (string, error) {
+	if binary, ok := expression.(*ast.BinaryExpression); ok {
+		return GetVariableName(binary.Left)
+	} else if variable, ok := expression.(*ast.VariableExpression); ok {
+		return variable.Value.Value.(string), nil
+	} else {
+		return "", fmt.Errorf("not identifier")
+	}
 }

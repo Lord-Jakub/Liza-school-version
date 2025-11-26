@@ -1,5 +1,7 @@
 package utils
 
+import "os"
+
 func IsLetter(char rune) bool {
 	return (char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'Z') || char == '_'
 }
@@ -18,4 +20,13 @@ var EscapeSeq map[rune]rune = map[rune]rune{
 	'\\': '\\',
 	'\'': '\'',
 	'"':  '"',
+}
+
+func GetFilesOfDir(dir string) ([][]byte, error) {
+	entries, err := os.ReadDir(dir)
+	for _, entry := range entries {
+		if !entry.IsDir() {
+		}
+	}
+	return nil, err
 }

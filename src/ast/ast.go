@@ -152,7 +152,7 @@ type VariableDeclarationStatement struct {
 func (*VariableDeclarationStatement) stmt() {}
 
 type VariableAssignmentStatement struct {
-	Target token.Token
+	Target Expression
 	Value  Expression
 }
 
@@ -185,7 +185,7 @@ func (*String) T() string { return "string" }
 
 type Bool token.Token
 
-func (*Bool) T() string { return "string" }
+func (*Bool) T() string { return "bool" }
 
 type Array struct {
 	Type Type

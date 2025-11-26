@@ -1,6 +1,7 @@
 package interpreter
 
 import (
+	"encoding/json"
 	"fmt"
 	"lizalang/ast"
 	"lizalang/interpreter/object"
@@ -52,6 +53,23 @@ func (env *Environment) DeclareVar(v ast.VariableDeclarationStatement) (*Variabl
 	if vValue != nil && vValue.Type() != object.Type(v.Type.T()) {
 		// TODO: handle err
 		panic("wrong type bro")
+	}
+	if vValue == nil {
+		if _, ok := v.Type.(*ast.Array); ok {
+			lenght, err := Eval(v.Type.(*ast.Array).Size, env)
+			if lenght.Type() != object.Int {
+				return nil, fmt.Errorf("array len must be integer")
+			}
+			lenghtInt := int(lenght.GetValue().(int64))
+			if err != nil {
+				return nil, err
+			}
+			vValue = &object.ArrayObject{Len: lenghtInt, ElementType: object.Type(v.Type.T()), Value: make([]object.Object, lenghtInt)}
+		}
+	}
+	if v.Identifier.Value == nil {
+		data, _ := json.MarshalIndent(v, "", "  ")
+		fmt.Println(string(data))
 	}
 	variable := &Variable{
 		Name:    v.Identifier.Value.(string),
@@ -119,8 +137,10 @@ func (env *Environment) CallFunction(functionCall *ast.FunctionCall) (*Environme
 			return env, err
 		}
 	}
-	funcEnv.Outer = env
 	err := Interpret(&function.Body, &funcEnv)
+	if funcEnv.Return == nil {
+		return &funcEnv, err
+	}
 	retVal := *funcEnv.Return
 	if string(retVal.Type()) != function.Type.T() {
 		return env, fmt.Errorf("cannot return type %s in function of type %s", retVal.Type(), function.Type.T())

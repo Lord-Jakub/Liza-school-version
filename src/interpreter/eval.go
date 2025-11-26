@@ -35,7 +35,9 @@ func Eval(expression ast.Expression, env *Environment) (object.Object, error) {
 		if retEnv.Return == nil {
 			return nil, err
 		}
-		return *retEnv.Return, err
+		returnVal := *retEnv.Return
+		retEnv.Return = nil
+		return returnVal, err
 	default:
 		return &object.VoidObject{}, nil
 

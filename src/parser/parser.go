@@ -40,7 +40,7 @@ func (parser *Parser) Advance() {
 }
 
 var (
-	precedence         = map[string]int{"[": 1, "&&": 2, "||": 2, "==": 3, "!=": 3, "<=": 3, ">=": 3, "<": 3, ">": 3, "+": 4, "-": 4, "*": 5, "/": 5, "^": 6, ".": 7}
+	precedence         = map[string]int{"[": 100, "&&": 2, "||": 2, "==": 3, "!=": 3, "<=": 3, ">=": 3, "<": 3, ">": 3, "+": 4, "-": 4, "*": 5, "/": 5, "^": 6, ".": 7}
 	isRightAssociative = map[string]bool{"[": false, "&&": false, "||": false, "==": false, "!=": false, "<=": false, ">=": false, "<": false, ">": false, "+": false, "-": false, "*": false, "/": false, "^": true, ".": false}
 )
 
@@ -56,18 +56,21 @@ func (parser *Parser) ParseExpression(precLimit int) ast.Expression {
 		if precedence[op.Value.(string)] <= precLimit {
 			break
 		}
+
 		parser.Advance()
 		parser.Advance()
 		newLimit := precedence[op.Value.(string)]
 		if isRightAssociative[op.Value.(string)] {
 			newLimit--
 		}
+		var right ast.Expression
 		if op.Type == token.OpenBracket {
-			newLimit = 0
-		}
-		right := parser.ParseExpression(newLimit)
-		if parser.NextTok.Type == token.CloseBracket {
-			parser.Advance()
+			right = parser.ParseExpression(0)
+			if parser.NextTok.Type == token.CloseBracket {
+				parser.Advance()
+			}
+		} else {
+			right = parser.ParseExpression(newLimit)
 		}
 		left = &ast.BinaryExpression{left, op, right}
 	}
@@ -208,6 +211,7 @@ func (parser *Parser) ParseBody() ast.BodyStatement {
 				node = parser.ParseFunctionCall()
 				break
 			case token.OpenBracket:
+				node = parser.ParseVariableAssigment()
 				break
 			}
 			break
@@ -234,12 +238,18 @@ func (parser *Parser) ParseVariableDeclaration() ast.VariableDeclarationStatemen
 	var variable ast.VariableDeclarationStatement
 	variable.Mutable = true
 	variable.Type = parser.ParseType()
+	if parser.NextTok.Type == token.CloseBracket {
+		parser.Advance()
+	}
 	if parser.NextTok.Type == token.Identifier {
 		parser.Advance()
 		variable.Identifier = parser.CurTok
 	} else {
 		parser.Errors = append(parser.Errors, fmt.Errorf("Syntax error at line %d: expected identifier, got %s", parser.NextTok.Line, parser.NextTok.Value))
 		return ast.VariableDeclarationStatement{}
+	}
+	if parser.NextTok.Type == token.NewInstruction {
+		parser.Advance()
 	}
 	if parser.NextTok.Type == token.Equal {
 		parser.Advance()
@@ -251,7 +261,7 @@ func (parser *Parser) ParseVariableDeclaration() ast.VariableDeclarationStatemen
 
 func (parser *Parser) ParseVariableAssigment() ast.VariableAssignmentStatement {
 	var variable ast.VariableAssignmentStatement
-	variable.Target = parser.CurTok
+	variable.Target = parser.ParseExpression(0)
 	parser.Advance()
 	parser.Advance()
 	variable.Value = parser.ParseExpression(0)
@@ -408,7 +418,7 @@ func (parser *Parser) ParseType() ast.Type {
 		var a ast.Array
 		if parser.CurTok.Type != token.CloseBracket {
 			a.Size = parser.ParseExpression(0)
-			parser.Advance()
+			// parser.Advance()
 		}
 		a.Type = t
 		t = &a
