@@ -138,9 +138,11 @@ func (lexer *Lexer) NewToken(tokentype token.TokenType, value any) {
 
 func (lexer *Lexer) handleIdOrKeyword() {
 	str := ""
-	for utils.IsLetter(lexer.CurChar) {
+	for utils.IsLetter(lexer.CurChar) || utils.IsDigit(lexer.CurChar) {
+
 		str = string(append([]rune(str), lexer.CurChar))
-		if utils.IsLetter(lexer.NextChar) {
+
+		if utils.IsLetter(lexer.NextChar) || utils.IsDigit(lexer.NextChar) {
 			lexer.Advance()
 		} else {
 			break

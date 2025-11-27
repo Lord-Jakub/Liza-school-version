@@ -70,6 +70,7 @@ func main() {
 		interpreter.GetNamespaces(&par.Program)
 		interpreter.Init()
 		env := interpreter.Namespaces["main"]
+		env.Namespace = "main"
 		main, _ := interpreter.Namespaces["main"].GetFunc("main")
 		interpreter.Interpret(&main.Body, env)
 

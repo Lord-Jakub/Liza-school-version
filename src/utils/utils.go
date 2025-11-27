@@ -1,6 +1,10 @@
 package utils
 
-import "os"
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+)
 
 func IsLetter(char rune) bool {
 	return (char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'Z') || char == '_'
@@ -29,4 +33,9 @@ func GetFilesOfDir(dir string) ([][]byte, error) {
 		}
 	}
 	return nil, err
+}
+
+func PrintData(d any) {
+	data, _ := json.MarshalIndent(d, "", "  ")
+	fmt.Println(string(data))
 }

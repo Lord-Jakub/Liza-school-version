@@ -12,6 +12,7 @@ type Environment struct {
 	StoreFuncs map[string]*ast.FunctionDeclarationStatement
 	Outer      *Environment
 	Return     *object.Object
+	Namespace  string
 }
 
 func NewEnv() Environment {
@@ -20,6 +21,7 @@ func NewEnv() Environment {
 		make(map[string]*ast.FunctionDeclarationStatement),
 		nil,
 		nil,
+		"",
 	}
 }
 
@@ -37,6 +39,7 @@ func (env *Environment) GetVar(name string) (*Variable, bool) {
 			variable, ok = env.Outer.GetVar(name)
 		}
 	}
+
 	return variable, ok
 }
 
@@ -117,7 +120,7 @@ func (env *Environment) DeclareFunc(name string, function *ast.FunctionDeclarati
 
 func (env *Environment) CallFunction(functionCall *ast.FunctionCall) (*Environment, error) {
 	if function, ok := BuildIns[functionCall.Identifier.Value.(string)]; ok {
-		function(env, functionCall.Args...)
+		function(env, functionCall.Args)
 		return env, nil
 	}
 	function, ok := env.GetFunc(functionCall.Identifier.Value.(string))
@@ -129,6 +132,8 @@ func (env *Environment) CallFunction(functionCall *ast.FunctionCall) (*Environme
 	}
 
 	funcEnv := NewEnv()
+	funcEnv.Namespace = env.Namespace
+	funcEnv.Outer = Namespaces[funcEnv.Namespace]
 	for i, arg := range functionCall.Args {
 		variable, _ := funcEnv.DeclareVar(function.Args[i])
 		var err error

@@ -7,12 +7,12 @@ import (
 )
 
 var (
-	Namespaces map[string]*Environment                          = make(map[string]*Environment)
-	BuildIns   map[string]func(*Environment, ...ast.Expression) = make(map[string]func(*Environment, ...ast.Expression))
+	Namespaces map[string]*Environment                         = make(map[string]*Environment)
+	BuildIns   map[string]func(*Environment, []ast.Expression) = make(map[string]func(*Environment, []ast.Expression))
 )
 
 func Init() {
-	BuildIns["print"] = func(env *Environment, args ...ast.Expression) {
+	BuildIns["print"] = func(env *Environment, args []ast.Expression) {
 		for _, arg := range args {
 			argVal, err := Eval(arg, env)
 			if err != nil {
@@ -20,6 +20,24 @@ func Init() {
 			}
 			fmt.Print(argVal.GetValue())
 		}
+	}
+	BuildIns["len"] = func(env *Environment, args []ast.Expression) {
+		if len(args) > 1 {
+			panic(fmt.Errorf("Too many argumetns"))
+		} else if len(args) < 1 {
+			panic(fmt.Errorf("Not enough argumetns"))
+		}
+		value, err := Eval(args[0], env)
+		if err != nil {
+			panic(err)
+		}
+		arr, ok := value.(*object.ArrayObject)
+		if !ok {
+			panic(fmt.Errorf("argument must be array"))
+		}
+		var obj object.Object
+		obj = &object.IntObject{int64(arr.Len)}
+		env.Return = &obj
 	}
 }
 
@@ -77,6 +95,7 @@ func Interpret(body *ast.BodyStatement, env *Environment) error {
 			if condition.GetValue().(bool) {
 				scope := NewEnv()
 				scope.Outer = env
+				scope.Namespace = env.Namespace
 				Interpret(&ifStmt.Body, &scope)
 				if scope.Return != nil {
 					env.Return = scope.Return
@@ -85,6 +104,7 @@ func Interpret(body *ast.BodyStatement, env *Environment) error {
 			} else {
 				scope := NewEnv()
 				scope.Outer = env
+				scope.Namespace = env.Namespace
 				Interpret(&ifStmt.Alternative, &scope)
 				if scope.Return != nil {
 					env.Return = scope.Return
@@ -134,6 +154,7 @@ func Interpret(body *ast.BodyStatement, env *Environment) error {
 
 			scope := NewEnv()
 			scope.Outer = env
+			scope.Namespace = env.Namespace
 			scope.DeclareVar(forStmt.Init)
 			conditionVal, err := Eval(forStmt.Condition, &scope)
 			if err != nil {
