@@ -60,10 +60,13 @@ func (env *Environment) DeclareVar(v ast.VariableDeclarationStatement) (*Variabl
 	if vValue == nil {
 		if _, ok := v.Type.(*ast.Array); ok {
 			lenght, err := Eval(v.Type.(*ast.Array).Size, env)
-			if lenght.Type() != object.Int {
+			if lenght.GetValue() != nil && lenght.Type() != object.Int {
 				return nil, fmt.Errorf("array len must be integer")
 			}
-			lenghtInt := int(lenght.GetValue().(int64))
+			lenghtInt := 0
+			if lenght.GetValue() != nil {
+				lenghtInt = int(lenght.GetValue().(int64))
+			}
 			if err != nil {
 				return nil, err
 			}

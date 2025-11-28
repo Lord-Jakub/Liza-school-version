@@ -418,7 +418,7 @@ func (parser *Parser) ParseType() ast.Type {
 		var a ast.Array
 		if parser.CurTok.Type != token.CloseBracket {
 			a.Size = parser.ParseExpression(0)
-			// parser.Advance()
+			parser.Advance()
 		}
 		a.Type = t
 		t = &a

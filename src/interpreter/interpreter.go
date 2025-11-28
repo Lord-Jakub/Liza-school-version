@@ -119,15 +119,18 @@ func Interpret(body *ast.BodyStatement, env *Environment) error {
 				return err
 			}
 			target, ok := env.GetVar(name)
-			var isArr bool
-			var index int64
-			if _, isArr = varStmt.Target.(*ast.BinaryExpression); isArr {
-				arr, _ := varStmt.Target.(*ast.BinaryExpression)
+
+			var indexes []int64
+			arr, isBinExpr := varStmt.Target.(*ast.BinaryExpression)
+			isArray := isBinExpr
+			for isBinExpr {
+				//arr, _ := varStmt.Target.(*ast.BinaryExpression)
 				indexObj, err := Eval(arr.Right, env)
 				if err != nil {
 					return err
 				}
-				index = indexObj.GetValue().(int64)
+				indexes = append(indexes, indexObj.GetValue().(int64))
+				arr, isBinExpr = arr.Left.(*ast.BinaryExpression)
 			}
 			if !ok {
 				return fmt.Errorf("variable %s is not declared", name)
@@ -140,13 +143,16 @@ func Interpret(body *ast.BodyStatement, env *Environment) error {
 				return err
 			}
 
-			if value.Type() != target.Type && !isArr {
+			if value.Type() != target.Type && !isArray {
 				return fmt.Errorf("cannot assign value of type %s to variable of type %s", value.Type(), target.Type)
 			}
-			if !isArr {
+			if !isArray {
 				target.Value = value
 			} else {
-				target.Value.(*object.ArrayObject).Value[index] = value
+				for i, j := 0, len(indexes)-1; i < j; i, j = i+1, j-1 {
+					indexes[i], indexes[j] = indexes[j], indexes[i]
+				}
+				setValueInArray(value, target.Value.(*object.ArrayObject), indexes)
 			}
 			break
 		case (ast.ForStatement):
@@ -208,5 +214,21 @@ func GetVariableName(expression ast.Expression) (string, error) {
 		return variable.Value.Value.(string), nil
 	} else {
 		return "", fmt.Errorf("not identifier")
+	}
+}
+func setValueInArray(value object.Object, array *object.ArrayObject, indexes []int64) {
+	if array.Value[int(indexes[0])] == nil || array.Value[int(indexes[0])].Type() == value.Type() {
+		array.Value[int(indexes[0])] = value
+	} else {
+		if len(indexes) > 0 {
+			if arr, ok := array.Value[int(indexes[0])].(*object.ArrayObject); ok {
+				indexes = indexes[1:]
+				setValueInArray(value, arr, indexes)
+			} else {
+				panic("")
+			}
+		} else {
+			panic("")
+		}
 	}
 }
