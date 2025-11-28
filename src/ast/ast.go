@@ -121,8 +121,8 @@ func (*BodyStatement) stmt() {}
 
 type IfStatement struct {
 	Condition   Expression
-	Body        BodyStatement
-	Alternative BodyStatement
+	Body        Node
+	Alternative Node
 }
 
 func (*IfStatement) stmt() {}
@@ -137,7 +137,7 @@ type FunctionDeclarationStatement struct {
 	Name token.Token
 	Type Type
 	Args []VariableDeclarationStatement
-	Body BodyStatement
+	Body Node
 }
 
 func (*FunctionDeclarationStatement) stmt() {}
@@ -162,7 +162,7 @@ type ForStatement struct {
 	Init      VariableDeclarationStatement
 	Condition Expression
 	Post      VariableAssignmentStatement
-	Body      BodyStatement
+	Body      Node
 }
 
 func (*ForStatement) stmt() {}

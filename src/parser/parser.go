@@ -164,6 +164,66 @@ func (parser *Parser) Parse() {
 	// TODO: look for namespaces in queue and parse them
 }
 
+func (parser *Parser) ParseNode() ast.Node {
+	for parser.CurTok.Type == token.NewInstruction {
+		parser.Advance()
+	}
+	var node ast.Node
+	switch parser.CurTok.Type {
+	case token.Keyword:
+		if slices.Contains(token.Types, parser.CurTok.Value.(string)) {
+			node = parser.ParseVariableDeclaration()
+		}
+		switch parser.CurTok.Value {
+		case "func":
+			node = parser.ParseFunctionDeclaration()
+			break
+		case "if":
+			node = parser.ParseIfStatement()
+			break
+		case "for":
+			node = parser.ParseForStatement()
+			break
+		case "return":
+			node = parser.ParseReturnStatement()
+			break
+		case "constant":
+			parser.Advance()
+			constant := parser.ParseVariableDeclaration()
+			constant.Mutable = false
+			node = constant
+			break
+		}
+		break
+	case token.Identifier:
+		switch parser.NextTok.Type {
+		case token.Equal:
+			node = parser.ParseVariableAssigment()
+			break
+		case token.OpenParen:
+			node = parser.ParseFunctionCall()
+			break
+		case token.OpenBracket:
+			node = parser.ParseVariableAssigment()
+			break
+
+		}
+		break
+	case token.String:
+		break
+	case token.Int:
+		break
+	case token.Float:
+		break
+	case token.OpenBrace:
+		node = parser.ParseBody()
+		break
+	case token.CloseBrace:
+		return nil
+	}
+	return node
+}
+
 func (parser *Parser) ParseBody() ast.BodyStatement {
 	body := ast.BodyStatement{}
 	var endToken token.TokenType
@@ -174,61 +234,15 @@ func (parser *Parser) ParseBody() ast.BodyStatement {
 		endToken = token.EOF
 	}
 	for parser.CurTok.Type != endToken {
-		var node ast.Node
-		isNewIns := false
-		switch parser.CurTok.Type {
-		case token.Keyword:
-			if slices.Contains(token.Types, parser.CurTok.Value.(string)) {
-				node = parser.ParseVariableDeclaration()
-			}
-			switch parser.CurTok.Value {
-			case "func":
-				node = parser.ParseFunctionDeclaration()
-				break
-			case "if":
-				node = parser.ParseIfStatement()
-				break
-			case "for":
-				node = parser.ParseForStatement()
-				break
-			case "return":
-				node = parser.ParseReturnStatement()
-				break
-			case "constant":
-				parser.Advance()
-				constant := parser.ParseVariableDeclaration()
-				constant.Mutable = false
-				node = constant
-				break
-			}
-			break
-		case token.Identifier:
-			switch parser.NextTok.Type {
-			case token.Equal:
-				node = parser.ParseVariableAssigment()
-				break
-			case token.OpenParen:
-				node = parser.ParseFunctionCall()
-				break
-			case token.OpenBracket:
-				node = parser.ParseVariableAssigment()
-				break
-			}
-			break
-		case token.String:
-			break
-		case token.Int:
-			break
-		case token.Float:
-			break
-		case token.NewInstruction:
-			isNewIns = true
+		node := parser.ParseNode()
+		if parser.CurTok.Type == endToken {
 			break
 		}
 		parser.Advance()
-		if !isNewIns {
-			body.Nodes = append(body.Nodes, node)
-		}
+		body.Nodes = append(body.Nodes, node)
+	}
+	if parser.CurTok.Type == token.CloseBrace {
+		parser.Advance()
 	}
 
 	return body
@@ -319,12 +333,8 @@ func (parser *Parser) ParseFunctionDeclaration() ast.FunctionDeclarationStatemen
 		function.Type = parser.ParseType()
 		parser.Advance()
 	}
-	if parser.CurTok.Type == token.OpenBrace {
-		function.Body = parser.ParseBody()
-	} else {
-		parser.Errors = append(parser.Errors, fmt.Errorf("Error at line %d: expected type or {, got %s", parser.CurTok.Line, parser.CurTok.Value))
-		return ast.FunctionDeclarationStatement{}
-	}
+	function.Body = parser.ParseNode()
+
 	return function
 }
 
@@ -332,28 +342,22 @@ func (parser *Parser) ParseIfStatement() ast.IfStatement {
 	var ifStatement ast.IfStatement
 	parser.Advance()
 	ifStatement.Condition = parser.ParseExpression(0)
-	line := parser.CurTok.Line
-	for parser.CurTok.Type != token.OpenBrace {
+	parser.Advance()
+	//line := parser.CurTok.Line
+	/*for parser.CurTok.Type != token.OpenBrace {
 		parser.Advance()
 		if parser.CurTok.Type == token.EOF {
 			parser.Errors = append(parser.Errors, fmt.Errorf("Error at line %d: missing {", line))
 		}
-	}
-	ifStatement.Body = parser.ParseBody()
+	}*/
+	ifStatement.Body = parser.ParseNode()
 	for parser.NextTok.Type == token.NewInstruction {
 		parser.Advance()
 	}
 	if parser.NextTok.Type == token.Keyword && parser.NextTok.Value == "else" {
 		parser.Advance()
-		if parser.NextTok.Type == token.Keyword && parser.NextTok.Value == "if" {
-			parser.Advance()
-			ifStatement.Alternative.Nodes = append(ifStatement.Alternative.Nodes, parser.ParseIfStatement())
-		} else {
-			for parser.CurTok.Type != token.OpenBrace {
-				parser.Advance()
-			}
-			ifStatement.Alternative = parser.ParseBody()
-		}
+		ifStatement.Alternative = parser.ParseNode()
+
 	}
 	return ifStatement
 }
@@ -398,15 +402,16 @@ func (parser *Parser) ParseForStatement() ast.ForStatement {
 		parser.Advance()
 		forStmt.Post = parser.ParseVariableAssigment()
 	}
-	line := parser.CurTok.Line
-	for parser.CurTok.Type != token.OpenBrace && parser.CurTok.Type != token.EOF {
-		if parser.CurTok.Type == token.EOF {
-			parser.Errors = append(parser.Errors, fmt.Errorf("Error at line %d: expected { got EOF", line))
-			return ast.ForStatement{}
-		}
-		parser.Advance()
-	}
-	forStmt.Body = parser.ParseBody()
+	parser.Advance()
+	/*	line := parser.CurTok.Line
+		for parser.CurTok.Type != token.OpenBrace && parser.CurTok.Type != token.EOF {
+			if parser.CurTok.Type == token.EOF {
+				parser.Errors = append(parser.Errors, fmt.Errorf("Error at line %d: expected { got EOF", line))
+				return ast.ForStatement{}
+			}
+			parser.Advance()
+		}*/
+	forStmt.Body = parser.ParseNode()
 	return forStmt
 }
 

@@ -145,7 +145,7 @@ func (env *Environment) CallFunction(functionCall *ast.FunctionCall) (*Environme
 			return env, err
 		}
 	}
-	err := Interpret(&function.Body, &funcEnv)
+	err := Interpret(function.Body, &funcEnv)
 	if funcEnv.Return == nil {
 		return &funcEnv, err
 	}

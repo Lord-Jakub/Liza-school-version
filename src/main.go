@@ -72,7 +72,7 @@ func main() {
 		env := interpreter.Namespaces["main"]
 		env.Namespace = "main"
 		main, _ := interpreter.Namespaces["main"].GetFunc("main")
-		interpreter.Interpret(&main.Body, env)
+		interpreter.Interpret(main.Body, env)
 
 		/*jsonData, _ := json.MarshalIndent(interpreter.Namespaces, "", "\t")
 		println(string(jsonData))*/
