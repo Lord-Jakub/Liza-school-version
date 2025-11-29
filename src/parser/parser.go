@@ -3,7 +3,10 @@ package parser
 import (
 	"fmt"
 	"lizalang/ast"
+	"lizalang/lexer"
 	"lizalang/token"
+	"lizalang/utils"
+	"os"
 	"slices"
 )
 
@@ -122,7 +125,7 @@ func (parser *Parser) ParseExpressionLeft() ast.Expression {
 	return &ast.InvalidExpression{}
 }
 
-func (parser *Parser) Parse() {
+func (parser *Parser) Parse(root, path string) {
 	namespaceName := ""
 	for parser.CurTok.Type != token.Keyword && parser.CurTok.Value != "namespace" {
 		if parser.CurTok.Type == token.EOF {
@@ -140,12 +143,11 @@ func (parser *Parser) Parse() {
 	for parser.CurTok.Type == token.NewInstruction {
 		parser.Advance()
 	}
+	var imports []string
 	for parser.CurTok.Type == token.Keyword && parser.CurTok.Value.(string) == "import" {
 		if parser.NextTok.Type == token.String {
 			parser.Advance()
-			if _, ok := parser.Program.Namespaces[parser.CurTok.Value.(string)]; ok {
-				// TODO: add namespace to namespaces to parse queue
-			}
+			imports = append(imports, parser.CurTok.Value.(string))
 		} else {
 			parser.Errors = append(parser.Errors, fmt.Errorf("Error at line %d: expected string, got %s", parser.NextTok.Line, parser.NextTok.Value))
 			parser.Advance()
@@ -154,6 +156,9 @@ func (parser *Parser) Parse() {
 			}
 		}
 	}
+	for parser.CurTok.Type == token.NewInstruction || parser.CurTok.Type == token.String {
+		parser.Advance()
+	}
 	namespaceBody, ok := parser.Program.Namespaces[namespaceName]
 	if !ok {
 		parser.Program.Namespaces[namespaceName] = ast.BodyStatement{}
@@ -161,7 +166,30 @@ func (parser *Parser) Parse() {
 
 	namespaceBody.Nodes = append(parser.Program.Namespaces[namespaceName].Nodes, parser.ParseBody().Nodes...)
 	parser.Program.Namespaces[namespaceName] = namespaceBody
-	// TODO: look for namespaces in queue and parse them
+	for _, imported := range imports {
+		files, err := utils.GetFilesOfDir(imported, root, path)
+		if err != nil {
+			parser.Errors = append(parser.Errors, err)
+		}
+		for _, file := range files {
+			code, err := os.ReadFile(file)
+			if err != nil {
+				parser.Errors = append(parser.Errors, err)
+			}
+
+			lex := lexer.New(string(code), file)
+			lex.Lex()
+			if len(lex.Tokens) < 2 {
+				continue
+			}
+			parser.Tokens = lex.Tokens
+			parser.Pos = 0
+			parser.CurTok = lex.Tokens[0]
+			parser.NextTok = lex.Tokens[1]
+			parser.Parse(root, path)
+
+		}
+	}
 }
 
 func (parser *Parser) ParseNode() ast.Node {

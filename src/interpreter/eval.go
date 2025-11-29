@@ -118,6 +118,15 @@ func EvalUnary(unary *ast.UnaryExpression, env *Environment) (object.Object, err
 }
 
 func EvalBinary(binary *ast.BinaryExpression, env *Environment) (object.Object, error) {
+	if binary.Op.Value.(string) == "." {
+		switch binary.Left.(type) {
+		case *ast.VariableExpression:
+			if namespace, ok := Namespaces[binary.Left.(*ast.VariableExpression).Value.Value.(string)]; ok {
+				return Eval(binary.Right, namespace)
+			}
+			break
+		}
+	}
 	left, err := Eval(binary.Left, env)
 	if err != nil {
 		return &object.VoidObject{}, err
@@ -127,6 +136,7 @@ func EvalBinary(binary *ast.BinaryExpression, env *Environment) (object.Object, 
 	if err != nil {
 		return &object.VoidObject{}, err
 	}
+
 	if op == "[" {
 		array, ok := left.(*object.ArrayObject)
 		if !ok {

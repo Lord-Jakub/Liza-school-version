@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"lizalang/interpreter"
 	"lizalang/lexer"
 	"lizalang/parser"
@@ -24,8 +25,12 @@ func ParseArgs(args []string) *Context {
 	if err != nil {
 		panic(err)
 	}
+	exec, err := os.Executable()
+	if err != nil {
+		panic(err)
+	}
 	ctx := Context{
-		Root:      args[0],
+		Root:      filepath.Dir(exec),
 		Path:      wd,
 		File:      "main.li",
 		AST:       false,
@@ -57,7 +62,10 @@ func main() {
 	lex.Lex()
 
 	par := parser.New(lex.Tokens)
-	par.Parse()
+	par.Parse(ctx.Root, ctx.Path)
+	for _, err := range par.Errors {
+		fmt.Println(err)
+	}
 	if ctx.AST {
 		data := par.Program
 		jsonAST, _ := json.MarshalIndent(data, "", "\t")

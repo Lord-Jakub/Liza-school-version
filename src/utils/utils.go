@@ -3,7 +3,9 @@ package utils
 import (
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"os"
+	"path/filepath"
 )
 
 func IsLetter(char rune) bool {
@@ -26,13 +28,24 @@ var EscapeSeq map[rune]rune = map[rune]rune{
 	'"':  '"',
 }
 
-func GetFilesOfDir(dir string) ([][]byte, error) {
-	entries, err := os.ReadDir(dir)
-	for _, entry := range entries {
-		if !entry.IsDir() {
-		}
+func GetFilesOfDir(dirpath, root, path string) ([]string, error) {
+	var dir string
+	if _, err := os.Stat(filepath.Join(root, "libs", dirpath)); err == nil {
+		dir = filepath.Join(root, "libs", dirpath)
+	} else if _, err := os.Stat(filepath.Join(path, dirpath)); err == nil {
+		dir = filepath.Join(path, dirpath)
+	} else {
+		return nil, fmt.Errorf("%s was not found in %s or %s", dirpath, root, path)
 	}
-	return nil, err
+
+	files, err := fs.Glob(os.DirFS(dir), "*.li")
+	for i, file := range files {
+		files[i] = filepath.Join(dir, file)
+	}
+	if err != nil {
+		return nil, err
+	}
+	return files, nil
 }
 
 func PrintData(d any) {
