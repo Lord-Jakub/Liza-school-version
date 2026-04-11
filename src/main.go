@@ -60,11 +60,19 @@ func main() {
 	}
 	lex := lexer.New(string(file), ctx.File)
 	lex.Lex()
-
+	if len(lex.Errors) > 0 {
+		for _, err := range lex.Errors {
+			fmt.Print(err.Error())
+		}
+		return
+	}
 	par := parser.New(lex.Tokens)
 	par.Parse(ctx.Root, ctx.Path)
-	for _, err := range par.Errors {
-		fmt.Println(err)
+	if len(par.Errors) > 0 {
+		for _, err := range par.Errors {
+			fmt.Println(err)
+		}
+		return
 	}
 	if ctx.AST {
 		data := par.Program
@@ -75,6 +83,7 @@ func main() {
 		}
 	}
 	if ctx.Interpret {
+		//utils.PrintData(par.Program.Namespaces)
 		interpreter.GetNamespaces(&par.Program)
 		interpreter.Init()
 		env := interpreter.Namespaces["main"]
