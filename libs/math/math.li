@@ -1,0 +1,101 @@
+namespace math
+
+constant float PI = 3.141592653589793
+constant float TWO_PI = 6.283185307179586
+
+func abs(int x) int{
+    if x<0 x=-x
+    return x
+}
+func absf(float x) float{
+    if x<0.0 x=-x
+    return x
+}
+func min(int a, int b) int{
+    if a<b {
+        return a
+    }
+    return b
+}
+func minf(float a, float b) float{
+    if a<b {
+        return a
+    }
+    return b
+}
+func max(int a, int b) int{
+    if a>b {
+        return a
+    }
+    return b
+}
+func maxf(float a, float b) float{
+    if a>b {
+        return a
+    }
+    return b
+}
+func clamp(int x, int min, int max) int{
+    if x>max {
+        x = max
+    }
+    if x<min {
+        x = min
+    }
+    return x
+}
+func clampf(float x, float min, float max) float{
+    if x>max {
+        x = max
+    }
+    if x<min {
+        x = min
+    }
+    return x
+}
+func factorial(int x) int {
+    if x == 0 return 1
+    for int n = x-1; n>0; n = n-1 {
+        x = x*n
+    }
+    return x
+}
+func gcd(int x, int y) int{
+    x = abs(x)
+    y = abs(y)
+    int a = max(x, y)
+    int b = min(x, y)
+    
+    for int r = a%b; r != 0; r = a%b{
+        a = b
+        b = r
+    }
+    return b
+}
+func lcm(int a, int b) int return abs(a / gcd(a, b) * b)
+func sin(float x) float {
+
+    x = x - TWO_PI * floor((x + PI) / TWO_PI)
+
+    float result = x
+    float sign = -1.0
+
+    for float n = 3.0; n < 10.0; n = n + 2.0 {
+        result = result + sign*x^n/IntToFloat(factorial(FloatToInt(n)))
+        sign = -sign
+    }
+
+    return result
+}
+func cos(float x) float{
+    return sin(x+PI/2.0)
+}
+func deg2rad(float d) float return d * pi / 180.0
+func rad2deg(float r) float return r * 180.0 / pi
+func floor(float x) float{
+    int i = FloatToInt(x)
+    if IntToFloat(i)>x{
+        return IntToFloat(i-1)
+    }
+    return IntToFloat(i)
+}

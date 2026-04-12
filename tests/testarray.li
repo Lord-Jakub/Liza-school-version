@@ -1,0 +1,14 @@
+namespace main
+
+import "array"
+func main(){
+    int[] arr = [1, 3, 5, 4, 2]
+    float[] arrf = [1.1, 3.3, 5.5, 4.4, 2.2]
+    print("sort(arr)=", array.sort(arr), "\n")
+    print("sortf(arrf)=", array.sortf(arrf), "\n")
+    print("dot(arr, array.sort(arr))=", array.dot(arr, array.sort(arr)), "\n")
+    print("dotf(arrf, array.sortf(arrf))=", array.dotf(arrf, array.sortf(arrf)), "\n")
+    print("sum(arr)=", array.sum(arr), "\n")
+    print("sumf(arrf)=", array.sumf(arrf), "\n")
+    print("append(arr, 1)=", append(arr, 1), "\n") //build-in function
+}
