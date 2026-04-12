@@ -6,6 +6,7 @@ import (
 	"lizalang/interpreter"
 	"lizalang/lexer"
 	"lizalang/parser"
+	"log"
 	"os"
 	"path/filepath"
 )
@@ -23,11 +24,11 @@ type Context struct {
 func ParseArgs(args []string) *Context {
 	wd, err := os.Getwd()
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	exec, err := os.Executable()
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	ctx := Context{
 		Root:      filepath.Dir(exec),
@@ -56,7 +57,7 @@ func main() {
 	ctx := ParseArgs(os.Args)
 	file, err := os.ReadFile(filepath.Join(ctx.Path, ctx.File))
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	lex := lexer.New(string(file), ctx.File)
 	lex.Lex()
@@ -79,7 +80,7 @@ func main() {
 		jsonAST, _ := json.MarshalIndent(data, "", "\t")
 		err := os.WriteFile(filepath.Join(ctx.Path, ctx.File[:len(ctx.File)-3]+"AST.json"), jsonAST, 0644)
 		if err != nil {
-			panic(err)
+			log.Fatal(err)
 		}
 	}
 	if ctx.Interpret {

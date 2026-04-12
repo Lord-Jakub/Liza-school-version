@@ -7,22 +7,38 @@ import (
 )
 
 // Program represents the root of the AST.
-// It organizes code into namespaces, each containing a body of statements.
 type Program struct {
 	Namespaces map[string]BodyStatement
 }
 
-// Node is a marker interface for all AST nodes.
-type Node interface{}
-
-// Expression represents any evaluatable construct in the language.
-type Expression interface {
-	Node
-	expr()          // marker method to distinguish expressions
-	String() string // returns a string representation (mainly for debugging)
+func (p *Program) Line() int {
+	for _, ns := range p.Namespaces {
+		return ns.Line()
+	}
+	return 0
 }
 
-// BinaryExpression represents a binary operation
+func (p *Program) File() string {
+	for _, ns := range p.Namespaces {
+		return ns.File()
+	}
+	return ""
+}
+
+// Node is a marker interface for all AST nodes.
+type Node interface {
+	Line() int
+	File() string
+}
+
+type Expression interface {
+	Node
+	expr()
+	String() string
+}
+
+// BinaryExpression
+
 type BinaryExpression struct {
 	Left  Expression
 	Op    token.Token
@@ -31,16 +47,23 @@ type BinaryExpression struct {
 
 func (*BinaryExpression) expr() {}
 
-// String returns a parenthesized representation of the binary expression.
+func (be *BinaryExpression) Line() int {
+	return be.Op.Line
+}
+
+func (be *BinaryExpression) File() string {
+	return be.Op.File
+}
+
 func (be *BinaryExpression) String() string {
-	// Special handling for array indexing syntax
 	if be.Op.Value == "[" {
 		return fmt.Sprintf("(%s %s %s])", be.Left.String(), be.Op.Value.(string), be.Right.String())
 	}
 	return fmt.Sprintf("(%s %s %s)", be.Left.String(), be.Op.Value.(string), be.Right.String())
 }
 
-// UnaryExpression represents prefix unary operations
+// UnaryExpression
+
 type UnaryExpression struct {
 	Prefix token.Token
 	Value  Expression
@@ -48,11 +71,20 @@ type UnaryExpression struct {
 
 func (*UnaryExpression) expr() {}
 
+func (ue *UnaryExpression) Line() int {
+	return ue.Prefix.Line
+}
+
+func (ue *UnaryExpression) File() string {
+	return ue.Prefix.File
+}
+
 func (ue *UnaryExpression) String() string {
 	return fmt.Sprintf("%s(%s)", ue.Prefix.Value.(string), ue.Value.String())
 }
 
-// FunctionCall represents a function invocation with arguments.
+// FunctionCall
+
 type FunctionCall struct {
 	Identifier token.Token
 	Args       []Expression
@@ -60,59 +92,95 @@ type FunctionCall struct {
 
 func (*FunctionCall) expr() {}
 
-// String builds a comma-separated argument list.
+func (fc FunctionCall) Line() int {
+	return fc.Identifier.Line
+}
+
+func (fc FunctionCall) File() string {
+	return fc.Identifier.File
+}
+
 func (fc *FunctionCall) String() string {
 	args := ""
 	for i, arg := range fc.Args {
-		if i == 0 {
-			args += arg.String()
-		} else {
-			args += "," + arg.String()
+		if i != 0 {
+			args += ","
 		}
+		args += arg.String()
 	}
 	return fmt.Sprintf("%s(%s)", fc.Identifier.Value.(string), args)
 }
 
-// VariableExpression represents usage of a variable identifier.
+// VariableExpression
+
 type VariableExpression struct {
 	Value token.Token
 }
 
 func (*VariableExpression) expr() {}
 
+func (ve *VariableExpression) Line() int {
+	return ve.Value.Line
+}
+
+func (ve *VariableExpression) File() string {
+	return ve.Value.File
+}
+
 func (ve *VariableExpression) String() string {
 	return ve.Value.Value.(string)
 }
 
-// LiteralExpression represents constant values (int, float, string, etc.).
+// LiteralExpression
+
 type LiteralExpression struct {
 	Value token.Token
 }
 
 func (*LiteralExpression) expr() {}
 
-// String converts the literal token value into its string form.
-func (le *LiteralExpression) String() string {
-	id := ""
-	switch le.Value.Value.(type) {
-	case int64:
-		id = strconv.Itoa(int(le.Value.Value.(int64)))
-	case string:
-		id = le.Value.Value.(string)
-	case float64:
-		id = fmt.Sprintf("%f", le.Value.Value.(float64))
-	}
-	return id
+func (le *LiteralExpression) Line() int {
+	return le.Value.Line
 }
 
-// ArrayExpression represents an array literal.
+func (le *LiteralExpression) File() string {
+	return le.Value.File
+}
+
+func (le *LiteralExpression) String() string {
+	switch v := le.Value.Value.(type) {
+	case int64:
+		return strconv.Itoa(int(v))
+	case string:
+		return v
+	case float64:
+		return fmt.Sprintf("%f", v)
+	}
+	return ""
+}
+
+// ArrayExpression
+
 type ArrayExpression struct {
 	Elements []Expression
 }
 
 func (*ArrayExpression) expr() {}
 
-// String joins elements into a comma-separated list inside brackets.
+func (ae *ArrayExpression) Line() int {
+	if len(ae.Elements) > 0 {
+		return ae.Elements[0].Line()
+	}
+	return 0
+}
+
+func (ae *ArrayExpression) File() string {
+	if len(ae.Elements) > 0 {
+		return ae.Elements[0].File()
+	}
+	return ""
+}
+
 func (ae *ArrayExpression) String() string {
 	var elements string
 	for i, element := range ae.Elements {
@@ -124,26 +192,47 @@ func (ae *ArrayExpression) String() string {
 	return fmt.Sprintf("[%s]", elements)
 }
 
-// InvalidExpression represents a placeholder for malformed expressions.
+// InvalidExpression
+
 type InvalidExpression struct{}
 
-func (*InvalidExpression) expr()          {}
+func (*InvalidExpression) expr() {}
+
+func (*InvalidExpression) Line() int { return 0 }
+
+func (*InvalidExpression) File() string { return "" }
+
 func (*InvalidExpression) String() string { return "()" }
 
-// Statement represents any executable construct.
 type Statement interface {
 	Node
-	stmt() // marker method to distinguish statements
+	stmt()
 }
 
-// BodyStatement represents a block of nodes (statements or expressions).
+// BodyStatement
+
 type BodyStatement struct {
 	Nodes []Node
 }
 
 func (*BodyStatement) stmt() {}
 
-// IfStatement represents conditional branching with optional alternative.
+func (bs BodyStatement) Line() int {
+	if len(bs.Nodes) > 0 {
+		return bs.Nodes[0].Line()
+	}
+	return 0
+}
+
+func (bs BodyStatement) File() string {
+	if len(bs.Nodes) > 0 {
+		return bs.Nodes[0].File()
+	}
+	return ""
+}
+
+// IfStatement
+
 type IfStatement struct {
 	Condition   Expression
 	Body        Node
@@ -152,14 +241,32 @@ type IfStatement struct {
 
 func (*IfStatement) stmt() {}
 
-// ReturnStatement represents returning a value from a function.
+func (is IfStatement) Line() int {
+	return is.Condition.Line()
+}
+
+func (is IfStatement) File() string {
+	return is.Condition.File()
+}
+
+// ReturnStatement
+
 type ReturnStatement struct {
 	ReturnValue Expression
 }
 
 func (*ReturnStatement) stmt() {}
 
-// FunctionDeclarationStatement represents a function definition.
+func (rs ReturnStatement) Line() int {
+	return rs.ReturnValue.Line()
+}
+
+func (rs ReturnStatement) File() string {
+	return rs.ReturnValue.File()
+}
+
+// FunctionDeclarationStatement
+
 type FunctionDeclarationStatement struct {
 	Name token.Token
 	Type Type
@@ -169,7 +276,16 @@ type FunctionDeclarationStatement struct {
 
 func (*FunctionDeclarationStatement) stmt() {}
 
-// VariableDeclarationStatement represents variable definition.
+func (fds FunctionDeclarationStatement) Line() int {
+	return fds.Name.Line
+}
+
+func (fds FunctionDeclarationStatement) File() string {
+	return fds.Name.File
+}
+
+// VariableDeclarationStatement
+
 type VariableDeclarationStatement struct {
 	Identifier token.Token
 	Type       Type
@@ -179,7 +295,16 @@ type VariableDeclarationStatement struct {
 
 func (*VariableDeclarationStatement) stmt() {}
 
-// VariableAssignmentStatement represents assigning a value to a target.
+func (vds VariableDeclarationStatement) Line() int {
+	return vds.Identifier.Line
+}
+
+func (vds VariableDeclarationStatement) File() string {
+	return vds.Identifier.File
+}
+
+// VariableAssignmentStatement
+
 type VariableAssignmentStatement struct {
 	Target Expression
 	Value  Expression
@@ -187,7 +312,16 @@ type VariableAssignmentStatement struct {
 
 func (*VariableAssignmentStatement) stmt() {}
 
-// ForStatement represents a classical for loop with init, condition, and post.
+func (vas VariableAssignmentStatement) Line() int {
+	return vas.Target.Line()
+}
+
+func (vas VariableAssignmentStatement) File() string {
+	return vas.Target.File()
+}
+
+// ForStatement
+
 type ForStatement struct {
 	Init      VariableDeclarationStatement
 	Condition Expression
@@ -197,12 +331,19 @@ type ForStatement struct {
 
 func (*ForStatement) stmt() {}
 
-// Type represents a type in the language type system.
-type Type interface {
-	T() string // returns string representation of the type
+func (fs ForStatement) Line() int {
+	return fs.Init.Line()
 }
 
-// Primitive type wrappers (based on tokens)
+func (fs ForStatement) File() string {
+	return fs.Init.File()
+}
+
+type Type interface {
+	T() string
+}
+
+// Primitive types
 
 type Int token.Token
 
@@ -220,15 +361,33 @@ type Bool token.Token
 
 func (*Bool) T() string { return "bool" }
 
-// Array represents an array type with element type and size expression.
+// Array type
+
 type Array struct {
 	Type Type
 	Size Expression
 }
 
-func (a *Array) T() string { return fmt.Sprintf("array of %s", a.Type.T()) }
+func (a Array) Line() int {
+	if a.Size != nil {
+		return a.Size.Line()
+	}
+	return 0
+}
 
-// Void represents absence of a value
+func (a Array) File() string {
+	if a.Size != nil {
+		return a.Size.File()
+	}
+	return ""
+}
+
+func (a *Array) T() string {
+	return fmt.Sprintf("array of %s", a.Type.T())
+}
+
+// Void
+
 type Void token.Token
 
 func (*Void) T() string { return "void" }

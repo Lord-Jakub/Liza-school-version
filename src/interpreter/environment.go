@@ -65,13 +65,13 @@ func (env *Environment) DeclareVar(v ast.VariableDeclarationStatement) (*Variabl
 		var err error
 		vValue, err = Eval(v.Value, env)
 		if err != nil {
-			panic(err) // TODO: proper error handling
+			return &Variable{}, err
 		}
 	}
 
 	// Type check against declared type
 	if vValue != nil && vValue.Type() != object.Type(v.Type.T()) {
-		panic("wrong type bro") // TODO: replace with proper error
+		return &Variable{}, fmt.Errorf("Can't assign value of type %s to variable of type %s", vValue.Type(), v.Type.T())
 	}
 
 	// Handle uninitialized arrays
@@ -100,11 +100,6 @@ func (env *Environment) DeclareVar(v ast.VariableDeclarationStatement) (*Variabl
 			}
 		}
 	}
-
-	/*if v.Identifier.Value == nil {
-		data, _ := json.MarshalIndent(v, "", "  ")
-		fmt.Println(string(data))
-	}*/
 
 	variable := &Variable{
 		Name:    v.Identifier.Value.(string),
@@ -154,8 +149,8 @@ func (env *Environment) CallFunction(functionCall *ast.FunctionCall) (*Environme
 
 	// Built-in functions
 	if function, ok := BuildIns[functionCall.Identifier.Value.(string)]; ok {
-		function(env, functionCall.Args)
-		return env, nil
+		err := function(env, functionCall.Args)
+		return env, err
 	}
 
 	// User-defined function
@@ -184,7 +179,6 @@ func (env *Environment) CallFunction(functionCall *ast.FunctionCall) (*Environme
 	// Pass arguments
 	for i, arg := range functionCall.Args {
 		variable, _ := funcEnv.DeclareVar(function.Args[i])
-
 		var err error
 		variable.Value, err = Eval(arg, env)
 		if err != nil {

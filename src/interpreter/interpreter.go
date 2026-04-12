@@ -1,9 +1,14 @@
 package interpreter
 
 import (
+	"bufio"
 	"fmt"
 	"lizalang/ast"
 	"lizalang/interpreter/object"
+	"log"
+	"os"
+	"strconv"
+	"strings"
 )
 
 var (
@@ -11,84 +16,189 @@ var (
 	Namespaces map[string]*Environment = make(map[string]*Environment)
 
 	// BuildIns maps builtin function names to their implementations.
-	BuildIns map[string]func(*Environment, []ast.Expression) = make(map[string]func(*Environment, []ast.Expression))
+	BuildIns map[string]func(*Environment, []ast.Expression) error = make(map[string]func(*Environment, []ast.Expression) error)
 )
 
 // Init registers all builtin functions into the interpreter.
 func Init() {
-	// print(...) - prints evaluated arguments without newline
-	BuildIns["print"] = func(env *Environment, args []ast.Expression) {
+	// print(...) - prints evaluated arguments
+	var writer = bufio.NewWriter(os.Stdout)
+	BuildIns["print"] = func(env *Environment, args []ast.Expression) error {
 		for _, arg := range args {
 			argVal, err := Eval(arg, env)
 			if err != nil {
-				panic(err) // TODO: replace with proper error propagation
+				return err
 			}
-			fmt.Print(argVal.GetValue())
+			if argVal == nil {
+				fmt.Fprint(writer, "<nil>")
+				continue
+			}
+
+			switch v := argVal.(type) {
+			case *object.ArrayObject:
+				fmt.Fprint(writer, "[")
+				for i, elem := range v.Value {
+					if i > 0 {
+						fmt.Fprint(writer, ", ")
+					}
+					if elem != nil {
+						fmt.Fprint(writer, elem.GetValue())
+					} else {
+						fmt.Fprint(writer, "null")
+					}
+				}
+				fmt.Fprint(writer, "]")
+			default:
+				fmt.Fprint(writer, argVal.GetValue())
+			}
 		}
+		writer.Flush()
+		return nil
+	}
+	// read() - reads user input from console
+	var stdinReader = bufio.NewReader(os.Stdin)
+	BuildIns["read"] = func(env *Environment, args []ast.Expression) error {
+		if args != nil {
+			return fmt.Errorf("read() doesn't accept arguments")
+		}
+		text, err := stdinReader.ReadString('\n')
+		if err != nil {
+			return fmt.Errorf("failed to read input: %w", err)
+		}
+
+		value := strings.TrimSpace(text)
+
+		var obj object.Object
+		obj = &object.StringObject{Value: value}
+		env.Return = &obj
+		return nil
 	}
 
 	// len(array) - returns length of an array
-	BuildIns["len"] = func(env *Environment, args []ast.Expression) {
+	BuildIns["len"] = func(env *Environment, args []ast.Expression) error {
 		if len(args) > 1 {
-			panic(fmt.Errorf("Too many argumetns"))
+			return fmt.Errorf("Too many argumetns")
 		} else if len(args) < 1 {
-			panic(fmt.Errorf("Not enough argumetns"))
+			return fmt.Errorf("Not enough argumetns")
 		}
 
 		value, err := Eval(args[0], env)
 		if err != nil {
-			panic(err)
+			return err
 		}
 
 		arr, ok := value.(*object.ArrayObject)
 		if !ok {
-			panic(fmt.Errorf("argument must be array"))
+			return fmt.Errorf("argument must be array")
 		}
 
 		var obj object.Object
 		obj = &object.IntObject{int64(arr.Len)}
 
 		env.Return = &obj
+		return nil
 	}
 
 	// IntToFloat(int) - converts int to float
-	BuildIns["IntToFloat"] = func(env *Environment, args []ast.Expression) {
+	BuildIns["IntToFloat"] = func(env *Environment, args []ast.Expression) error {
 		if len(args) != 1 {
-			panic(fmt.Errorf("You can have only one argument in IntToFloat()"))
+			return fmt.Errorf("You can have only one argument in IntToFloat()")
 		}
 
 		argVal, err := Eval(args[0], env)
 		if err != nil {
-			panic(err)
+			return err
 		}
 
 		if argVal.Type() != object.Int {
-			panic(fmt.Errorf("IntToFloat() accept only int as an argument, not %s", argVal.Type()))
+			return fmt.Errorf("IntToFloat() accept only int as an argument, not %s", argVal.Type())
 		}
 
 		var obj object.Object
 		obj = &object.FloatObject{float64(argVal.GetValue().(int64))}
 		env.Return = &obj
+		return nil
 	}
 
 	// FloatToInt(float) - converts float to int
-	BuildIns["FloatToInt"] = func(env *Environment, args []ast.Expression) {
+	BuildIns["FloatToInt"] = func(env *Environment, args []ast.Expression) error {
 		if len(args) != 1 {
-			panic(fmt.Errorf("You can have only one argument in FloatToInt()"))
+			return fmt.Errorf("You can have only one argument in FloatToInt()")
 		}
 
 		argVal, err := Eval(args[0], env)
 		if err != nil {
-			panic(err)
+			return err
 		}
 
 		if argVal.Type() != object.Float {
-			panic(fmt.Errorf("FloatToInt() accept only float as an argument, not %s", argVal.Type()))
+			return fmt.Errorf("FloatToInt() accept only float as an argument, not %s", argVal.Type())
 		}
 
 		var obj object.Object
 		obj = &object.IntObject{int64(argVal.GetValue().(float64))}
 		env.Return = &obj
+		return nil
+	}
+	// IntToString(int) - converts int to String
+	BuildIns["IntToString"] = func(env *Environment, args []ast.Expression) error {
+		if len(args) != 1 {
+			return fmt.Errorf("You can have only one argument in IntToString()")
+		}
+
+		argVal, err := Eval(args[0], env)
+		if err != nil {
+			return err
+		}
+
+		if argVal.Type() != object.Int {
+			return fmt.Errorf("IntToString() accept only int as an argument, not %s", argVal.Type())
+		}
+
+		var obj object.Object
+		obj = &object.StringObject{strconv.Itoa(int(argVal.GetValue().(int64)))}
+		env.Return = &obj
+		return nil
+	}
+	// StringToInt(String) - converts string to int
+	BuildIns["StringToInt"] = func(env *Environment, args []ast.Expression) error {
+		if len(args) != 1 {
+			return fmt.Errorf("You can have only one argument in StringToInt()")
+		}
+		argVal, err := Eval(args[0], env)
+		if err != nil {
+			return err
+		}
+
+		if argVal.Type() != object.String {
+			return fmt.Errorf("StringToInt() accept only String as an argument, not %s", argVal.Type())
+		}
+		num, err := strconv.Atoi(argVal.GetValue().(string))
+		if err != nil {
+			return err
+		}
+		var obj object.Object
+		obj = &object.IntObject{int64(num)}
+		env.Return = &obj
+		return nil
+	}
+	// exit(int n) exits a program with exit code n
+	BuildIns["exit"] = func(env *Environment, args []ast.Expression) error {
+		if len(args) != 1 {
+			return fmt.Errorf("You must have one argument in exit()")
+		}
+
+		argVal, err := Eval(args[0], env)
+		if err != nil {
+			return err
+		}
+
+		if argVal.Type() != object.Int {
+			return fmt.Errorf("exit() accept only int as an argument, not %s", argVal.Type())
+		}
+
+		os.Exit(int(argVal.GetValue().(int64)))
+		return nil
 	}
 }
 
@@ -226,7 +336,10 @@ func Interpret(node ast.Node, env *Environment) error {
 			for i, j := 0, len(indexes)-1; i < j; i, j = i+1, j-1 {
 				indexes[i], indexes[j] = indexes[j], indexes[i]
 			}
-			setValueInArray(value, target.Value.(*object.ArrayObject), indexes)
+			err := setValueInArray(value, target.Value.(*object.ArrayObject), indexes)
+			if err != nil {
+				return err
+			}
 		}
 
 	case ast.ForStatement:
@@ -254,7 +367,9 @@ func Interpret(node ast.Node, env *Environment) error {
 		}
 
 		// Transform body to include post-expression
-		forStmt.Body = ast.BodyStatement{[]ast.Node{forStmt.Body, forStmt.Post}}
+		if (forStmt.Post != ast.VariableAssignmentStatement{}) {
+			forStmt.Body = ast.BodyStatement{[]ast.Node{forStmt.Body, forStmt.Post}}
+		}
 
 		for condition {
 			Interpret(forStmt.Body, &scope)
@@ -280,7 +395,12 @@ func Interpret(node ast.Node, env *Environment) error {
 		scope.Namespace = env.Namespace
 
 		for _, n := range body.Nodes {
-			Interpret(n, &scope)
+			err := Interpret(n, &scope)
+			if err != nil {
+				fmt.Println()
+
+				log.Fatal(fmt.Errorf("File %s, line %d: %s", n.File(), n.Line(), err.Error()))
+			}
 
 			// Propagate return upward
 			if scope.Return != nil {
@@ -304,22 +424,24 @@ func GetVariableName(expression ast.Expression) (string, error) {
 }
 
 // setValueInArray assigns value into (possibly nested) array using index chain
-func setValueInArray(value object.Object, array *object.ArrayObject, indexes []int64) {
+func setValueInArray(value object.Object, array *object.ArrayObject, indexes []int64) error {
 	// Base case: assign directly if type matches or slot is empty
-	if array.Value[int(indexes[0])] == nil || array.Value[int(indexes[0])].Type() == value.Type() {
-		array.Value[int(indexes[0])] = value
-		return
+	if len(indexes) == 1 {
+		if array.Value[int(indexes[0])] == nil || array.Value[int(indexes[0])].Type() == value.Type() {
+			array.Value[int(indexes[0])] = value
+			return nil
+		}
+		return fmt.Errorf("type mismatch: cannot assign %s to %s", value.Type(), array.Value[int(indexes[0])].Type())
 	}
 
 	// Recursive descent into nested arrays
-	if len(indexes) > 0 {
+	if len(indexes) > 1 {
 		if arr, ok := array.Value[int(indexes[0])].(*object.ArrayObject); ok {
-			indexes = indexes[1:]
-			setValueInArray(value, arr, indexes)
+			return setValueInArray(value, arr, indexes[1:])
 		} else {
-			panic("")
+			return fmt.Errorf("index %d is not an array", indexes[0])
 		}
 	} else {
-		panic("")
+		return fmt.Errorf("no indexes provided")
 	}
 }

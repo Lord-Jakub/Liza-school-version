@@ -35,7 +35,7 @@ func Eval(expression ast.Expression, env *Environment) (object.Object, error) {
 		if !ok {
 			return &object.VoidObject{}, fmt.Errorf("variable %s does not exist", variableEx.String())
 		}
-		return variable.Value, nil
+		return variable.Value.Copy(), nil
 
 	case *ast.ArrayExpression:
 		// Array literal
@@ -46,6 +46,9 @@ func Eval(expression ast.Expression, env *Environment) (object.Object, error) {
 		// Function call
 		functionCall := expression.(*ast.FunctionCall)
 		retEnv, err := env.CallFunction(functionCall)
+		if err != nil {
+			return &object.VoidObject{}, err
+		}
 
 		// Return value is stored in environment
 		if retEnv.Return == nil {
@@ -159,7 +162,11 @@ func EvalBinary(binary *ast.BinaryExpression, env *Environment) (object.Object, 
 		switch binary.Left.(type) {
 		case *ast.VariableExpression:
 			if namespace, ok := Namespaces[binary.Left.(*ast.VariableExpression).Value.Value.(string)]; ok {
-				return Eval(binary.Right, namespace)
+				newEnv := *namespace
+				newEnv.Outer = env
+				value, err := Eval(binary.Right, &newEnv)
+				env.Return = newEnv.Return
+				return value, err
 			}
 		}
 	}

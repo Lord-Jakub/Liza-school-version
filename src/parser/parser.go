@@ -70,7 +70,7 @@ var (
 		"+": false, "-": false,
 		"*": false, "/": false, "%": false,
 		"^": true,
-		".": false,
+		".": true,
 	}
 )
 
@@ -575,9 +575,8 @@ func (parser *Parser) ParseForStatement() ast.ForStatement {
 	if parser.NextTok.Type == token.Identifier {
 		parser.Advance()
 		forStmt.Post = parser.ParseVariableAssigment()
+		parser.Advance()
 	}
-
-	parser.Advance() // move to body
 
 	// Parse loop body
 	forStmt.Body = parser.ParseNode()
