@@ -44,6 +44,14 @@ func ParseArgs(args []string) *Context {
 				case "-AST":
 					ctx.AST = true
 					break
+				case "-help":
+					fmt.Println("Usage:")
+					fmt.Println("./liza <path to code> [optional: arguments]")
+					fmt.Println("\n Arguments:")
+					fmt.Println("-AST - saves abstract syntax tree into json file")
+					fmt.Println("-help - show this help tab")
+					os.Exit(0)
+					break
 				}
 			} else {
 				ctx.File = arg

@@ -200,6 +200,38 @@ func Init() {
 		os.Exit(int(argVal.GetValue().(int64)))
 		return nil
 	}
+	// append(array, element) - adds an element to the end of an array
+	BuildIns["append"] = func(env *Environment, args []ast.Expression) error {
+		if len(args) != 2 {
+			return fmt.Errorf("append() takes exactly 2 arguments, got %d", len(args))
+		}
+		arrVal, err := Eval(args[0], env)
+		if err != nil {
+			return err
+		}
+		arr, ok := arrVal.(*object.ArrayObject)
+		if !ok {
+			return fmt.Errorf("first argument to append() must be an array, got %s", arrVal.Type())
+		}
+
+		newElem, err := Eval(args[1], env)
+		if err != nil {
+			return err
+		}
+		if newElem.Type() != arr.ElementType {
+			return fmt.Errorf("Can't append type %s to array of %s", newElem.Type(), arr.ElementType)
+		}
+
+		newElements := append(arr.Value, newElem)
+
+		var obj object.Object
+		obj = &object.ArrayObject{
+			Value: newElements,
+			Len:   len(newElements),
+		}
+		env.Return = &obj
+		return nil
+	}
 }
 
 // GetNamespaces initializes environments for each namespace in the program.
